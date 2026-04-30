@@ -5,22 +5,74 @@ import { Input } from "@/components/ui/input";
 import Layout from "@/components/Layout";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useEffect, useRef } from "react";
 
 const ACCOUNT_NUMBER = "1234567890";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState<"overview" | "dues" | "idcard" | "profile">("overview");
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const [profile, setProfile] = useState({
-    fullName: "Toluwani Bakare",
-    matricNumber: "230303010052",
-    level: "300L",
+    fullName: "",
+    matricNumber: "",
+    level: "",
     birthday: "",
-    email: "student@lasustech.edu.ng",
+    email: "",
+    duesStatus: "Pending",
+    idCardStatus: "Not Registered",
+    attendance: 0,
+    resources: 0,
+    profileImage: null as string | null
   });
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [activities, setActivities] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/");
+        return;
+      }
+
+      try {
+        const response = await fetch('http://localhost:5000/api/student/dashboard', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+          setProfile({
+            ...profile,
+            fullName: data.profile.full_name,
+            matricNumber: data.profile.matric_number,
+            level: data.profile.level,
+            duesStatus: data.profile.dues_status,
+            idCardStatus: data.profile.id_card_status,
+            attendance: data.profile.attendance_percentage,
+            resources: data.profile.resources_count,
+            profileImage: data.profile.profile_image
+          });
+          setActivities(data.activities);
+        } else {
+          toast({ title: "Session Expired", description: "Please login again.", variant: "destructive" });
+          navigate("/");
+        }
+      } catch (error) {
+        console.error("Fetch error:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [navigate]);
 
   const isProfileIncomplete = !profile.fullName || !profile.matricNumber || !profile.level || !profile.birthday;
 
@@ -36,10 +88,79 @@ const Dashboard = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleUploadProfile = (e: React.FormEvent) => {
+  const handleUploadProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({ title: "Profile Updated", description: "Your changes have been saved successfully." });
-    setActiveTab("overview");
+    const token = localStorage.getItem("token");
+    try {
+      const response = await fetch('http://localhost:5000/api/student/profile', {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          full_name: profile.fullName,
+          level: profile.level,
+          email: profile.email
+        })
+      });
+      if (response.ok) {
+        toast({ title: "Profile Updated", description: "Your changes have been saved successfully." });
+        setActiveTab("overview");
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to update profile.", variant: "destructive" });
+    }
+  };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const token = localStorage.getItem("token");
+    try {
+      toast({ title: "Uploading...", description: "Compressing and saving your photo." });
+      const response = await fetch('http://localhost:5000/api/student/profile-image', {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setProfile({ ...profile, profileImage: data.imageUrl });
+        toast({ title: "Success", description: "Profile picture updated successfully!" });
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to upload image.", variant: "destructive" });
+    }
+  };
+
+  const handlePayment = async () => {
+    const token = localStorage.getItem("token");
+    try {
+      const response = await fetch('http://localhost:5000/api/payments/initialize', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          email: profile.email || `${profile.matricNumber}@lasustech.edu.ng`,
+          amount: 5000 // Example amount in Naira
+        })
+      });
+      const data = await response.json();
+      if (response.ok && data.data.authorization_url) {
+        window.location.href = data.data.authorization_url;
+      }
+    } catch (err) {
+      toast({ title: "Payment Error", description: "Could not initialize payment.", variant: "destructive" });
+    }
   };
 
   return (
@@ -145,7 +266,7 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <h3 className="text-sm font-bold">Membership Dues</h3>
-                      <p className="text-xs text-muted-foreground">Paid status: <span className="text-amber-600 font-bold">Pending</span></p>
+                      <p className="text-xs text-muted-foreground">Paid status: <span className={`${profile.duesStatus === 'Paid' ? 'text-green-600' : 'text-amber-600'} font-bold`}>{profile.duesStatus}</span></p>
                     </div>
                   </div>
                   <Button onClick={() => setActiveTab("dues")} className="mt-6 w-full rounded-xl" variant="outline">View Break-down</Button>
@@ -158,8 +279,9 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <h3 className="text-sm font-bold">ID Card Status</h3>
-                      <p className="text-xs text-muted-foreground">Action: <span className="text-blue-600 font-bold">Registration open</span></p>
+                      <p className="text-xs text-muted-foreground">Status: <span className="text-blue-600 font-bold">{profile.idCardStatus}</span></p>
                     </div>
+
                   </div>
                   <Button onClick={() => setActiveTab("idcard")} className="mt-6 w-full rounded-xl" variant="outline">Start Registration</Button>
                 </div>
@@ -183,18 +305,14 @@ const Dashboard = () => {
                 <div className="rounded-3xl border border-border bg-white p-6 shadow-sm">
                   <h3 className="font-display text-lg font-bold">Recent Activities</h3>
                   <div className="mt-6 space-y-4">
-                    {[
-                      { type: "Profile Update", date: "Today, 10:45 AM", status: "Done" },
-                      { type: "Dues Initialization", date: "Yesterday, 2:15 PM", status: "Incomplete" },
-                      { type: "Chapter Meeting", date: "April 12, 10:00 AM", status: "Attended" },
-                    ].map((activity, i) => (
+                    {activities.map((activity, i) => (
                       <div key={i} className="flex items-center justify-between border-b border-border pb-3 last:border-0">
                         <div>
                           <p className="text-sm font-semibold">{activity.type}</p>
-                          <p className="text-[11px] text-muted-foreground">{activity.date}</p>
+                          <p className="text-[11px] text-muted-foreground">{new Date(activity.activity_date).toLocaleDateString()}</p>
                         </div>
                         <span className={`text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 ${
-                          activity.status === "Done" ? "bg-green-100 text-green-700" : 
+                          activity.status === "Done" || activity.status === "Attended" ? "bg-green-100 text-green-700" : 
                           activity.status === "Incomplete" ? "bg-amber-100 text-amber-700" :
                           "bg-blue-100 text-blue-700"
                         }`}>
@@ -202,6 +320,7 @@ const Dashboard = () => {
                         </span>
                       </div>
                     ))}
+                    {activities.length === 0 && <p className="text-xs text-muted-foreground">No recent activities found.</p>}
                   </div>
                 </div>
 
@@ -210,13 +329,14 @@ const Dashboard = () => {
                   <div className="mt-6 grid grid-cols-2 gap-4">
                     <div className="rounded-2xl bg-white p-4">
                       <p className="text-[10px] font-bold uppercase text-muted-foreground">Attendance</p>
-                      <p className="mt-1 font-display text-2xl font-bold">84%</p>
+                      <p className="mt-1 font-display text-2xl font-bold">{profile.attendance}%</p>
                     </div>
                     <div className="rounded-2xl bg-white p-4">
                       <p className="text-[10px] font-bold uppercase text-muted-foreground">Resources</p>
-                      <p className="mt-1 font-display text-2xl font-bold">12</p>
+                      <p className="mt-1 font-display text-2xl font-bold">{profile.resources}</p>
                     </div>
                   </div>
+
                   <p className="mt-6 text-xs leading-relaxed text-muted-foreground italic">
                     "Computing is the language of the future. Keep learning and growing as a Computing Student."
                   </p>
@@ -237,15 +357,24 @@ const Dashboard = () => {
                     <div className="relative">
                       <div className="h-32 w-32 overflow-hidden rounded-full border-4 border-card bg-muted shadow-xl">
                         <img 
-                          src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=128&auto=format&fit=crop" 
+                          src={profile.profileImage ? `http://localhost:5000${profile.profileImage}` : "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=128&auto=format&fit=crop"} 
                           alt="Profile" 
                           className="h-full w-full object-cover"
                         />
                       </div>
                     </div>
-                    <Button variant="outline" className="mb-4 gap-2 rounded-xl text-xs">
-                      Update Photo
-                    </Button>
+                    <div>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        ref={fileInputRef} 
+                        onChange={handleImageChange} 
+                        className="hidden" 
+                      />
+                      <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="mb-4 gap-2 rounded-xl text-xs">
+                        Update Photo
+                      </Button>
+                    </div>
                   </div>
 
                   <form onSubmit={handleUploadProfile} className="mt-8 space-y-6">
@@ -341,8 +470,23 @@ const Dashboard = () => {
                 </div>
                 <div className="mt-8 rounded-2xl border border-primary/20 bg-primary/5 p-6 shadow-highlight">
                   <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-primary" />
+                    Pay Online (Instant)
+                  </h4>
+                  <p className="mt-2 text-xs text-muted-foreground">Skip the bank queue and pay your ₦5,000 dues securely via Paystack.</p>
+                  <Button 
+                    onClick={handlePayment} 
+                    className="mt-4 w-full rounded-xl shadow-lg shadow-primary/20"
+                    disabled={profile.duesStatus === 'Paid'}
+                  >
+                    {profile.duesStatus === 'Paid' ? 'Dues Already Paid' : 'Pay Dues Online Now'}
+                  </Button>
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-border bg-muted/20 p-6">
+                  <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 text-primary" />
-                    Crucial Instructions
+                    Bank Transfer Instructions
                   </h4>
                   <ul className="mt-4 space-y-3 text-xs text-muted-foreground font-medium">
                     <li className="flex gap-2"><span>1.</span> <span>Transfer the exact dues amount to the account above.</span></li>

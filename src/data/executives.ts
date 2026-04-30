@@ -1,17 +1,22 @@
-import exec1 from "@/assets/exec-1.jpg";
-import exec2 from "@/assets/exec-2.jpg";
-import exec3 from "@/assets/exec-3.jpg";
-import exec4 from "@/assets/exec-4.jpg";
+import presidentImg from "@/assets/president.jpg";
 import vpImg from "@/assets/vice_president.jpg";
 import ladyViceImg from "@/assets/lady_vice.jpeg";
+import gensecImg from "@/assets/gensec.jpeg";
 import treasurerImg from "@/assets/Treasurer.jpeg";
+import proImg from "@/assets/pro.jpg";
 import sportsDirectorImg from "@/assets/sports.jpg";
 import socialDirectorImg from "@/assets/social_director.png";
 import welfareImg from "@/assets/welfare.jpeg";
 import hoc400Img from "@/assets/hoc_400.jpg";
+import asshoc400Img from "@/assets/asshoc_400.jpg";
 import asshoc300Img from "@/assets/asshoc_300.jpeg";
+import hoc200Img from "@/assets/hoc_200.jpg";
+import asshoc200Img from "@/assets/asshoc_200.jpg";
 import hoc100Img from "@/assets/hoc_100.jpeg";
 import asshoc100Img from "@/assets/asshoc_100.jpeg";
+import hoc300Img from "@/assets/hoc_300.jpg";
+import assGensecImg from "@/assets/ass_gensec.jpg";
+import finsecImg from "@/assets/finsec.jpg";
 
 export interface Executive {
   name: string;
@@ -19,6 +24,7 @@ export interface Executive {
   level: string;
   description: string;
   image: string;
+  objectPosition?: string;
 }
 
 export const executives: Executive[] = [
@@ -27,7 +33,8 @@ export const executives: Executive[] = [
     post: "President",
     level: "400 Level",
     description: "Serves as the primary leader and official representative of the NACOS LASUSTECH Chapter, overseeing all activities and strategic growth.",
-    image: exec1,
+    image: presidentImg,
+    objectPosition: "object-top",
   },
   {
     name: "Bakare Toluwani Moses",
@@ -48,21 +55,21 @@ export const executives: Executive[] = [
     post: "General Secretary",
     level: "300 Level",
     description: "The custodian of chapter records, responsible for official documentation, correspondence, and meeting coordination.",
-    image: exec4,
+    image: gensecImg,
   },
   {
     name: "Emmanuel Ariyo Ogunfunwa",
     post: "Assistant General Secretary",
     level: "200 Level",
     description: "Supports the General Secretary in administrative duties and ensures continuous documentation of chapter affairs.",
-    image: exec1,
+    image: assGensecImg,
   },
   {
     name: "Onaade Abdulmuqtadir Ayomide",
     post: "Financial Secretary",
     level: "300 Level",
     description: "Maintains accurate financial records, manages budget allocations, and ensures financial transparency across all chapter projects.",
-    image: exec2,
+    image: finsecImg,
   },
   {
     name: "Ebhojie Oluwadamilola",
@@ -76,7 +83,7 @@ export const executives: Executive[] = [
     post: "Public Relations Officer",
     level: "100 Level",
     description: "The official spokesperson for the chapter, managing media relations, brand image, and external communications.",
-    image: exec4,
+    image: proImg,
   },
   {
     name: "Fatai Adewale",
@@ -112,14 +119,14 @@ export const executives: Executive[] = [
     post: "HOC for 300 level",
     level: "300 Level",
     description: "Serves as the primary link between the 300 level students and the executive council, managing class-specific affairs.",
-    image: exec2,
+    image: hoc300Img,
   },
   {
     name: "Osho Aishat",
     post: "HOC for 200 level",
     level: "200 Level",
     description: "Coordinates academic and social activities for the 200 level class, ensuring their voices are heard in the chapter.",
-    image: exec1,
+    image: hoc200Img,
   },
   {
     name: "Ayara Michael",
@@ -130,11 +137,12 @@ export const executives: Executive[] = [
   },
   // Asst HOCs Descending (400 - 100)
   {
-    name: "Adebisit Emmanuel Oluwatobi",
+    name: "Adebisi Emmanuel Oluwatobi",
     post: "Assistant HOC for 400L",
     level: "400 Level",
     description: "Assists the 400L HOC in class management and leadership duties for the graduating class.",
-    image: exec2,
+    image: asshoc400Img,
+    objectPosition: "object-top",
   },
   {
     name: "Matti Jadesola",
@@ -148,7 +156,7 @@ export const executives: Executive[] = [
     post: "Assistant HOC for 200L",
     level: "200 Level",
     description: "Supports class coordination and member welfare for the 200 level students.",
-    image: exec4,
+    image: asshoc200Img,
   },
   {
     name: "Olatunji Oyindamola Barakat",

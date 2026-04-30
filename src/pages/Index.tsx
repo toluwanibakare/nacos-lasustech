@@ -8,6 +8,7 @@ import {
   BookOpen,
   ChevronRight,
 } from "lucide-react";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import Layout from "@/components/Layout";
 import SectionHeading from "@/components/SectionHeading";
@@ -18,13 +19,15 @@ import { executives } from "@/data/executives";
 import { events } from "@/data/events";
 import { blogs } from "@/data/blogs";
 import BlogCard from "@/components/BlogCard";
-import heroBg from "@/assets/hero-bg.jpg";
-import gallery1 from "@/assets/gallery-1.jpg";
-import gallery2 from "@/assets/gallery-2.jpg";
-import gallery3 from "@/assets/gallery-3.jpg";
-import gallery4 from "@/assets/gallery-4.jpg";
+import heroBg from "@/assets/Events/bootcamp_onboarding/PHOTO-2026-04-29-19-36-06.jpg";
 import nacosLogo from "@/assets/nacos_logo.png";
 import lasustechLogo from "@/assets/lasustech_logo.png";
+
+// Latest Chapter Moments
+import moment1 from "@/assets/Events/bootcamp_onboarding/PHOTO-2026-04-29-19-36-10.jpg";
+import moment2 from "@/assets/Events/bootcamp_onboarding/PHOTO-2026-04-29-19-36-10(1).jpg";
+import moment3 from "@/assets/Events/bootcamp_onboarding/PHOTO-2026-04-29-19-36-11.jpg";
+import moment4 from "@/assets/Events/bootcamp_onboarding/PHOTO-2026-04-29-19-36-11(1).jpg";
 
 const quickActions = [
   { icon: LogIn, label: "Login", path: "#", action: "login", desc: "Access your member portal" },
@@ -33,7 +36,7 @@ const quickActions = [
   { icon: BookOpen, label: "Constitution", path: "/constitution", desc: "Read the chapter constitution" },
 ];
 
-const galleryImages = [gallery1, gallery2, gallery3, gallery4];
+const galleryImages = [moment1, moment2, moment3, moment4];
 
 const Index = () => {
   const [loginOpen, setLoginOpen] = useState(false);
@@ -45,6 +48,23 @@ const Index = () => {
   };
 
   const [isHoveringLogos, setIsHoveringLogos] = useState(false);
+  
+  // Drag-to-rotate state for logos
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const rotateX = useSpring(useTransform(y, [-100, 100], [30, -30]), { stiffness: 100, damping: 30 });
+  const rotateY = useSpring(useTransform(x, [-100, 100], [-30, 30]), { stiffness: 100, damping: 30 });
+
+  const handleDrag = (_: any, info: any) => {
+    x.set(info.offset.x);
+    y.set(info.offset.y);
+  };
+
+  const handleDragEnd = () => {
+    x.set(0);
+    y.set(0);
+  };
 
   return (
     <Layout>
@@ -59,69 +79,36 @@ const Index = () => {
           />
         </div>
 
-        <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(8,17,29,0.95)_0%,rgba(8,17,29,0.88)_42%,rgba(8,17,29,0.72)_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(31,95,175,0.18),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(22,155,45,0.12),transparent_24%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(8,17,29,0.85)_0%,rgba(8,17,29,0.4)_50%,rgba(8,17,29,0.85)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(31,95,175,0.15),transparent_70%)]" />
 
-        <div className="container relative z-10 py-16 md:py-24 lg:py-28">
-          <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12">
-            <div className="lg:col-span-7 xl:col-span-6">
-              <h1 className="max-w-4xl font-display text-4xl font-extrabold leading-[0.95] tracking-tight text-white md:text-5xl lg:text-6xl xl:text-7xl animate-reveal">
-                NACOS <span className="text-[#4C8DDA]">LASUSTECH</span> Chapter
-              </h1>
+        <div className="container relative z-10 py-20 md:py-32 lg:py-40">
+          <div className="flex flex-col items-center text-center">
+            <h1 className="max-w-4xl font-display text-5xl font-extrabold leading-[0.95] tracking-tight text-white md:text-6xl lg:text-7xl xl:text-8xl animate-reveal">
+              NACOS <span className="text-[#4C8DDA]">LASUSTECH</span> Chapter
+            </h1>
 
-              <p className="mt-6 max-w-2xl text-sm leading-7 text-white/85 md:text-base md:leading-8 animate-reveal-delay-1">
-                Building the next generation of computing leaders through learning, innovation, leadership, and community.
-              </p>
+            <p className="mt-8 max-w-2xl text-base leading-7 text-white md:text-lg md:leading-8 animate-reveal-delay-1 drop-shadow-md">
+              Building the next generation of computing leaders through learning, innovation, leadership, and community.
+            </p>
 
-              <div className="mt-8 flex flex-row gap-2 sm:gap-3 animate-reveal-delay-2">
-                <Link to="https://portal.nacos.org.ng/register" className="flex-1 sm:flex-initial">
-                  <Button
-                    size="lg"
-                    className="w-full sm:min-w-[150px] bg-primary text-[10px] xs:text-xs sm:text-base font-bold text-white hover:bg-primary/90 shadow-lg shadow-primary/20 p-2 sm:p-6"
-                  >
-                    Join NACOS National
-                  </Button>
-                </Link>
-
+            <div className="mt-10 flex flex-col sm:flex-row gap-4 animate-reveal-delay-2 w-full justify-center px-4">
+              <Link to="https://portal.nacos.org.ng/register" className="w-full sm:w-auto">
                 <Button
                   size="lg"
-                  onClick={() => setLoginOpen(true)}
-                  className="flex-1 sm:flex-initial sm:min-w-[150px] bg-[#1F5FAF] text-[10px] xs:text-xs sm:text-base font-bold text-white hover:bg-[#184d90] shadow-lg shadow-blue-500/20 p-2 sm:p-6"
+                  className="w-full sm:min-w-[200px] bg-primary text-xs sm:text-base font-bold text-white hover:bg-primary/90 shadow-2xl shadow-primary/40 p-6"
                 >
-                  Go to Dashboard
+                  Join NACOS National
                 </Button>
-              </div>
-            </div>
+              </Link>
 
-            <div className="lg:col-span-5 xl:col-span-6">
-              <div className="mx-auto max-w-[520px] overflow-hidden rounded-[28px] border border-white/10 bg-white/5 shadow-2xl backdrop-blur-sm">
-                <div className="grid gap-3 p-3 grid-cols-1 sm:grid-cols-[1.15fr_0.85fr]">
-                  <img
-                    src={gallery1}
-                    alt="NACOS group photo"
-                    className="h-[240px] w-full rounded-2xl object-cover sm:h-[360px]"
-                  />
-
-                  <div className="hidden flex-col gap-3 sm:flex">
-                    <img
-                      src={gallery2}
-                      alt="NACOS seminar"
-                      className="h-[132px] w-full rounded-2xl object-cover sm:h-[172px]"
-                    />
-                    <div className="flex-1 rounded-2xl border border-[#4C8DDA]/20 bg-[#1F5FAF]/14 p-5">
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-[#9fc3f1]">
-                        LASUSTECH Chapter
-                      </p>
-                      <h2 className="mt-2 text-lg font-semibold leading-snug text-primary md:text-xl">
-                        A digital home for the chapter
-                      </h2>
-                      <p className="mt-3 text-sm leading-6 text-[#9fc3f1]">
-                        Executives, events, and chapter activities in one space.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <Button
+                size="lg"
+                onClick={() => setLoginOpen(true)}
+                className="w-full sm:w-auto sm:min-w-[200px] bg-[#1F5FAF] text-xs sm:text-base font-bold text-white hover:bg-[#184d90] shadow-2xl shadow-blue-500/40 p-6"
+              >
+                Go to Dashboard
+              </Button>
             </div>
           </div>
         </div>
@@ -130,48 +117,48 @@ const Index = () => {
       {/* Quick Access */}
       <section className="relative -mt-6 z-20">
         <div className="container">
-          <div className="grid gap-3 grid-cols-2 xl:grid-cols-4 animate-reveal-delay-2">
+          <div className="grid gap-2 grid-cols-2 lg:grid-cols-4 animate-reveal-delay-2">
             {quickActions.map((item) => (
               <div key={item.label}>
                 {item.path !== "#" ? (
                   <Link
                     to={item.path}
-                    className="group flex h-full items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm"
+                    className="group flex h-full flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4 rounded-2xl border border-border bg-card p-3 sm:p-4 text-center sm:text-left shadow-sm transition-all hover:shadow-md"
                   >
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <div className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                       <item.icon className="h-4 w-4" />
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-sm font-semibold text-foreground">
+                      <h3 className="text-[11px] sm:text-sm font-bold text-foreground">
                         {item.label}
                       </h3>
-                      <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+                      <p className="hidden sm:block mt-1 text-[11px] leading-5 text-muted-foreground">
                         {item.desc}
                       </p>
                     </div>
 
-                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-colors group-hover:text-foreground" />
+                    <ChevronRight className="hidden sm:block h-4 w-4 shrink-0 text-muted-foreground/50 transition-colors group-hover:text-foreground" />
                   </Link>
                 ) : (
                   <button
                     onClick={() => handleAction(item)}
-                    className="w-full h-full group flex items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm text-left"
+                    className="w-full h-full group flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4 rounded-2xl border border-border bg-card p-3 sm:p-4 text-center sm:text-left shadow-sm transition-all hover:shadow-md"
                   >
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <div className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                       <item.icon className="h-4 w-4" />
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-sm font-semibold text-foreground">
+                      <h3 className="text-[11px] sm:text-sm font-bold text-foreground">
                         {item.label}
                       </h3>
-                      <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+                      <p className="hidden sm:block mt-1 text-[11px] leading-5 text-muted-foreground">
                         {item.desc}
                       </p>
                     </div>
 
-                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-colors group-hover:text-foreground" />
+                    <ChevronRight className="hidden sm:block h-4 w-4 shrink-0 text-muted-foreground/50 transition-colors group-hover:text-foreground" />
                   </button>
                 )}
               </div>
@@ -208,9 +195,18 @@ const Index = () => {
               onMouseEnter={() => setIsHoveringLogos(true)}
               onMouseLeave={() => setIsHoveringLogos(false)}
             >
-              <div 
-                className="relative h-64 w-64 md:h-80 md:w-80 lg:h-96 lg:w-96 [transform-style:preserve-3d] animate-flip-horizontal"
-                style={{ animationPlayState: isHoveringLogos ? "paused" : "running" }}
+              <motion.div 
+                drag
+                dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                dragElastic={0.1}
+                onDrag={handleDrag}
+                onDragEnd={handleDragEnd}
+                className={`relative h-60 w-60 md:h-80 md:w-80 lg:h-96 lg:w-96 [transform-style:preserve-3d] ${!isHoveringLogos ? "animate-flip-horizontal" : ""}`}
+                style={{ 
+                  rotateX, 
+                  rotateY,
+                  animationPlayState: isHoveringLogos ? "paused" : "running"
+                }}
               >
                 {/* Front Side - NACOS Logo */}
                 <a 
@@ -224,7 +220,7 @@ const Index = () => {
                     src={nacosLogo}
                     alt="NACOS Logo"
                     loading="lazy"
-                    className="h-48 w-48 object-contain md:h-60 md:w-60 lg:h-72 lg:w-72"
+                    className="h-40 w-40 object-contain md:h-60 md:w-60 lg:h-72 lg:w-72"
                   />
                 </a>
 
@@ -240,10 +236,10 @@ const Index = () => {
                     src={lasustechLogo}
                     alt="LASUSTECH Logo"
                     loading="lazy"
-                    className="h-48 w-48 object-contain md:h-60 md:w-60 lg:h-72 lg:w-72"
+                    className="h-40 w-40 object-contain md:h-60 md:w-60 lg:h-72 lg:w-72"
                   />
                 </a>
-              </div>
+              </motion.div>
             </div>
           </div>
         </div>
@@ -295,28 +291,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Blog Preview */}
-      <section className="py-16 md:py-24 lg:py-28">
-        <div className="container">
-          <SectionHeading
-            label="News & Updates"
-            title="Latest from the Blog"
-            description="Insights, tutorials, and chapter news from our tech community."
-          />
-          <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {blogs.slice(0, 3).map((blog) => (
-              <BlogCard key={blog.id} {...blog} />
-            ))}
-          </div>
-          <div className="mt-8 text-center">
-            <Link to="/blog">
-              <Button variant="outline" className="gap-2 text-xs font-semibold text-black">
-                View All Posts <ArrowRight className="h-3.5 w-3.5" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+
 
       {/* Gallery Preview */}
       <section className="bg-muted py-16 md:py-24 lg:py-28">
@@ -339,7 +314,7 @@ const Index = () => {
             ))}
           </div>
           <div className="mt-8 text-center">
-            <Link to="/events#gallery">
+            <Link to="/events">
               <Button variant="outline" className="gap-2 text-xs font-semibold text-black">
                 View Full Gallery <ArrowRight className="h-3.5 w-3.5" />
               </Button>

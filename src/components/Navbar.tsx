@@ -26,7 +26,6 @@ const navLinks = [
   { label: "Home", path: "/", icon: Home },
   { label: "Executives", path: "/executives", icon: Users },
   { label: "Events", path: "/events", icon: CalendarDays },
-  { label: "Blog", path: "/blog", icon: FileText }, // changed
   // { label: "Dues", path: "/dues", icon: CreditCard },
   // { label: "ID Card", path: "/id-card", icon: IdCard },
   { label: "Constitution", path: "/constitution", icon: BookOpen },
@@ -220,11 +219,14 @@ const Navbar = () => {
                   </div>
                 ) : (
                   <>
+                  <div className="flex items-center gap-3">
+                    <img src={nacosLogo} alt="NACOS Logo" className="h-7 w-auto" />
+                    <img src={lasustechLogo} alt="LASUSTECH Logo" className="h-7 w-auto" />
                     <div className="flex flex-col">
-                      <img src={nacosLogo} alt="Logo" className="h-8 w-auto" />
-                      <span className="font-display font-bold text-xs mt-1">NACOS LASUSTECH</span>
+                      <span className="font-display font-bold text-xs">NACOS LASUSTECH</span>
                       <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Chapter</span>
                     </div>
+                  </div>
                   </>
                 )}
               </div>

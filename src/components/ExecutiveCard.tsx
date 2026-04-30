@@ -4,9 +4,10 @@ interface ExecutiveCardProps {
   level: string;
   description: string;
   image: string;
+  objectPosition?: string;
 }
 
-const ExecutiveCard = ({ name, post, level, description, image }: ExecutiveCardProps) => {
+const ExecutiveCard = ({ name, post, level, description, image, objectPosition = "object-center" }: ExecutiveCardProps) => {
   return (
     <div className="group rounded-2xl border border-border bg-card overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 animate-reveal">
       <div className="aspect-[3/4] overflow-hidden bg-muted">
@@ -14,7 +15,7 @@ const ExecutiveCard = ({ name, post, level, description, image }: ExecutiveCardP
           src={image}
           alt={name}
           loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          className={`h-full w-full object-cover ${objectPosition} transition-transform duration-500 group-hover:scale-[1.03]`}
         />
       </div>
       <div className="p-4 md:p-5">

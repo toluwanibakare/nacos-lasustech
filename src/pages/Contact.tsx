@@ -10,10 +10,26 @@ const Contact = () => {
   const { toast } = useToast();
   const [form, setForm] = useState({ name: "", email: "", message: "" });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({ title: "Message sent", description: "Thank you for reaching out. We will get back to you soon." });
-    setForm({ name: "", email: "", message: "" });
+    try {
+      const response = await fetch('http://localhost:5000/api/contact/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name: form.name,
+          email: form.email,
+          subject: 'Contact Form Message',
+          message: form.message
+        })
+      });
+      if (response.ok) {
+        toast({ title: "Message sent", description: "Thank you for reaching out. We will get back to you soon." });
+        setForm({ name: "", email: "", message: "" });
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to send message.", variant: "destructive" });
+    }
   };
 
   return (
@@ -37,9 +53,9 @@ const Contact = () => {
               <h3 className="font-display text-lg font-bold text-foreground">Contact Information</h3>
               <div className="mt-6 space-y-4">
                 {[
-                  { icon: Mail, label: "Email", value: "nacoslasustech@gmail.com" },
+                  { icon: Mail, label: "Email", value: "nacoslasustech01@gmail.com" },
                   { icon: MapPin, label: "Address", value: "Lagos State University of Science and Technology, Ikorodu, Lagos State" },
-                  { icon: Phone, label: "Phone", value: "+234 800 000 0000" },
+                  { icon: Phone, label: "Phone", value: "+234 814 429 6322" },
                 ].map((item) => (
                   <div key={item.label} className="flex items-start gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/8 text-primary">
@@ -54,11 +70,12 @@ const Contact = () => {
               </div>
 
               <h3 className="mt-8 font-display text-lg font-bold text-foreground">Follow Us</h3>
-              <div className="mt-3 flex gap-4">
+              <div className="mt-3 flex flex-wrap gap-4">
                 {[
-                  { label: "Twitter", href: "https://twitter.com/nacoslasustech" },
+                  { label: "Facebook", href: "https://www.facebook.com/share/1ApD4QSPDW/?mibextid=wwXIfr" },
                   { label: "Instagram", href: "https://instagram.com/nacoslasustech" },
-                  { label: "WhatsApp", href: "https://wa.me/2348000000000" },
+                  { label: "TikTok", href: "https://www.tiktok.com/@nacoslasustech2" },
+                  { label: "LinkedIn", href: "https://www.linkedin.com/in/nacos-lasustech-3aa8833b3?trk=contact-info" },
                 ].map((link) => (
                   <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-secondary hover:underline">
                     {link.label}

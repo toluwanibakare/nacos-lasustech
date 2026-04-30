@@ -30,7 +30,6 @@ const quickLinks = [
   { label: "Home", path: "/" },
   { label: "Executives", path: "/executives" },
   { label: "Events", path: "/events" },
-  { label: "Blog", path: "/blog" },
   { label: "Contact Us", path: "/contact" },
 ];
 
@@ -177,10 +176,10 @@ const Footer = () => {
             <ul className="mt-5 space-y-3 text-sm text-white/65">
               <li>
                 <a 
-                  href="mailto:nacoslasustech@gmail.com" 
+                  href="mailto:nacoslasustech01@gmail.com" 
                   className="transition-colors hover:text-white"
                 >
-                  nacoslasustech@gmail.com
+                  nacoslasustech01@gmail.com
                 </a>
               </li>
               <li>LASUSTECH, Ikorodu, Lagos</li>
@@ -262,6 +261,7 @@ const Footer = () => {
                 <a href="https://tmb.it.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors underline underline-offset-4">TMB</a>,
                 <a href="#" className="hover:text-white transition-colors underline underline-offset-4">Muqtech</a>,
                 <a href="#" className="hover:text-white transition-colors underline underline-offset-4">DevMoh</a>,
+                <a href="https://makinde-portfolio.vercel.app" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors underline underline-offset-4">Polytencode</a>,
                 & <a href="#" className="hover:text-white transition-colors underline underline-offset-4">C'est BroCode</a>
               </span>
             </p>

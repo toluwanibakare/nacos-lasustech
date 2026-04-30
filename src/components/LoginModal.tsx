@@ -18,15 +18,46 @@ const LoginModal = ({ open, onClose }: LoginModalProps) => {
 
   if (!open) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!surname.trim() || !matric.trim()) return;
-    localStorage.setItem("isLoggedIn", "true");
-    toast({ title: "Login successful", description: "Redirecting to your dashboard..." });
-    setSurname("");
-    setMatric("");
-    onClose();
-    window.location.href = "/dashboard";
+
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          matric_number: matric,
+          password: surname, // Assuming surname is used as password for now as per current UI
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        
+        toast({ title: "Login successful", description: "Welcome back to the portal!" });
+        setSurname("");
+        setMatric("");
+        onClose();
+        navigate("/dashboard");
+      } else {
+        toast({ 
+          title: "Login failed", 
+          description: data.message || "Invalid credentials",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({ 
+        title: "Connection Error", 
+        description: "Could not connect to the backend server. Is it running?",
+        variant: "destructive"
+      });
+    }
   };
 
 

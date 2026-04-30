@@ -22,65 +22,42 @@ const Constitution = () => {
           <div className="rounded-lg border border-border bg-card p-6 md:p-10">
             <div className="mb-8 flex flex-col items-center justify-between gap-4 sm:flex-row">
               <h3 className="font-display text-lg font-bold text-foreground">NACOS LASUSTECH Constitution</h3>
-              <Button variant="outline" size="sm" className="gap-2 text-xs">
-                <FileDown className="h-3.5 w-3.5" /> Download PDF
-              </Button>
+              <a href="/NACOS_LASUSTECH_CONSTITUTION.pdf" download="NACOS_LASUSTECH_Constitution.pdf">
+                <Button variant="outline" size="sm" className="gap-2 text-xs">
+                  <FileDown className="h-3.5 w-3.5" /> Download PDF
+                </Button>
+              </a>
             </div>
 
             <div className="space-y-6 text-sm text-muted-foreground leading-relaxed">
               <div>
                 <h4 className="font-display text-base font-bold text-foreground">Preamble</h4>
-                <p className="mt-2">
-                  We, the students of Computer Science and related disciplines at the Lagos State University of Science and Technology,
-                  in recognition of the need to promote academic excellence, technological advancement, and professional development,
-                  do hereby establish this constitution to govern the affairs of the Nigeria Computer Society (NACOS), LASUSTECH Chapter.
+                <p className="mt-2 italic">
+                  "We, the students of the Nigeria Association of Computing Students (NACOS), LASUSTECH Chapter, having firmly and solemnly resolved to come together as one indivisible body under the Nigeria Computer Society and God, dedicated to advancing the art, science, engineering, and application of information technology, serving both professional and public interests by fostering the open interchange of information and by promoting the highest professional and ethical standards; and to provide for a constitution for the purpose of promoting the development and welfare of the members of the Association on the principle of equality, fairness, justice and good governance and for consolidating the unity of our members; and also being conscious of our rights, duties and obligations as computing students do hereby make, enact and give to ourselves the following constitution."
                 </p>
               </div>
 
               <div>
-                <h4 className="font-display text-base font-bold text-foreground">Article I: Name and Objectives</h4>
-                <p className="mt-2">
-                  <strong>Section 1:</strong> The name of the association shall be the Nigeria Computer Society (NACOS),
-                  Lagos State University of Science and Technology Chapter.
-                </p>
-                <p className="mt-2">
-                  <strong>Section 2:</strong> The objectives of the association shall be:
-                </p>
-                <ul className="list-disc space-y-1 pl-5 mt-2">
-                  <li>To promote the study and application of computing and information technology</li>
-                  <li>To foster unity and cooperation among students of computer science and related disciplines</li>
-                  <li>To organize academic and social programs that benefit members</li>
-                  <li>To represent the interests of members before the university and external bodies</li>
-                  <li>To encourage professional development and industry readiness</li>
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="font-display text-base font-bold text-foreground">Article II: Membership</h4>
-                <p className="mt-2">
-                  <strong>Section 1:</strong> Membership shall be open to all registered students of Computer Science,
-                  Information Technology, and related programs at LASUSTECH.
-                </p>
-                <p className="mt-2">
-                  <strong>Section 2:</strong> Members are required to pay the prescribed association dues as determined by the executive council.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-display text-base font-bold text-foreground">Article III: Executive Council</h4>
-                <p className="mt-2">
-                  <strong>Section 1:</strong> The affairs of the association shall be managed by an Executive Council consisting of elected officers.
-                </p>
-                <p className="mt-2">
-                  <strong>Section 2:</strong> The Executive Council shall comprise the President, Vice President, General Secretary,
-                  Assistant General Secretary, Financial Secretary, Treasurer, Public Relations Officer, Director of Socials,
-                  Director of Welfare, Director of Academics, and Head of Congress.
-                </p>
+                <h4 className="font-display text-base font-bold text-foreground">Article I: Establishment of the Association</h4>
+                <div className="mt-2 space-y-4">
+                  <p>
+                    <strong>Section 1: Name</strong><br />
+                    The Association shall be officially recognized as the <strong>Nigeria Association of Computing Students (NACOS), LASUSTECH Chapter</strong>. It shall be a body corporate with perpetual succession and a common seal, with power to sue and be sued in its corporate name.
+                  </p>
+                  <p>
+                    <strong>Section 2: The Motto</strong><br />
+                    The motto of the Association shall be <strong>"Towards Advanced Computing"</strong>.
+                  </p>
+                  <p>
+                    <strong>Section 3: Definition</strong><br />
+                    For the purpose of this constitution, <strong>Computing</strong> shall be defined to include disciplines such as <strong>Computer Science, Computer Engineering, Information Technology, Software Engineering, Cybersecurity, Data Science</strong>, and all other IT-related disciplines within the Lagos State University of Science and Technology.
+                  </p>
+                </div>
               </div>
 
               <div className="rounded-md border border-border bg-muted p-4 text-center">
                 <p className="text-xs text-muted-foreground">
-                  This is an excerpt. The full constitution document is available for download.
+                  This is an excerpt. The full constitution document is available for download using the button above.
                 </p>
               </div>
             </div>
