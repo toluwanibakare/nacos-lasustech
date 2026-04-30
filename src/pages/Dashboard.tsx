@@ -3,14 +3,21 @@ import { Copy, Check, ExternalLink, CreditCard, IdCard as IdIcon, LayoutDashboar
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Layout from "@/components/Layout";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef } from "react";
 
 const ACCOUNT_NUMBER = "1234567890";
 
 const Dashboard = () => {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<"overview" | "dues" | "idcard" | "profile">("overview");
+  
+  useEffect(() => {
+    if (location.state?.tab) {
+      setActiveTab(location.state.tab);
+    }
+  }, [location.state]);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -32,6 +39,8 @@ const Dashboard = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [activities, setActivities] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [amountOwing, setAmountOwing] = useState(5000);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -42,37 +51,58 @@ const Dashboard = () => {
       }
 
       try {
-        const response = await fetch('http://localhost:5000/api/student/dashboard', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
+        // Fetch dashboard and payments in parallel
+        const [dashRes, payRes] = await Promise.all([
+          fetch('http://localhost:5000/api/student/dashboard', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch('http://localhost:5000/api/student/payments', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+        ]);
 
-        if (response.ok) {
+        if (dashRes.ok) {
+          const dashData = await dashRes.json();
           setProfile({
             ...profile,
-            fullName: data.profile.full_name,
-            matricNumber: data.profile.matric_number,
-            level: data.profile.level,
-            duesStatus: data.profile.dues_status,
-            idCardStatus: data.profile.id_card_status,
-            attendance: data.profile.attendance_percentage,
-            resources: data.profile.resources_count,
-            profileImage: data.profile.profile_image
+            fullName: dashData.profile.full_name,
+            matricNumber: dashData.profile.matric_number,
+            level: dashData.profile.level,
+            duesStatus: dashData.profile.dues_status,
+            idCardStatus: dashData.profile.id_card_status,
+            attendance: dashData.profile.attendance_percentage,
+            resources: dashData.profile.resources_count,
+            profileImage: dashData.profile.profile_image
           });
-          setActivities(data.activities);
-        } else {
+          setActivities(dashData.activities || []);
+          if (dashData.profile.dues_status === 'Paid') {
+            setAmountOwing(0);
+          }
+        } else if (dashRes.status === 401) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("isLoggedIn");
           toast({ title: "Session Expired", description: "Please login again.", variant: "destructive" });
           navigate("/");
         }
+
+        if (payRes.ok) {
+          const payData = await payRes.json();
+          setPayments(Array.isArray(payData) ? payData : []);
+        }
       } catch (error) {
         console.error("Fetch error:", error);
+        toast({ 
+          title: "Connection Error", 
+          description: "Could not sync data with server. Check your connection.",
+          variant: "destructive" 
+        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchDashboardData();
-  }, [navigate]);
+  }, [navigate, toast]);
 
   const isProfileIncomplete = !profile.fullName || !profile.matricNumber || !profile.level || !profile.birthday;
 
@@ -143,6 +173,7 @@ const Dashboard = () => {
   const handlePayment = async () => {
     const token = localStorage.getItem("token");
     try {
+      toast({ title: "Processing...", description: "Opening payment portal." });
       const response = await fetch('http://localhost:5000/api/payments/initialize', {
         method: 'POST',
         headers: { 
@@ -151,17 +182,72 @@ const Dashboard = () => {
         },
         body: JSON.stringify({
           email: profile.email || `${profile.matricNumber}@lasustech.edu.ng`,
-          amount: 5000 // Example amount in Naira
+          amount: 5000,
+          payment_type: 'nacos_dues'
         })
       });
       const data = await response.json();
-      if (response.ok && data.data.authorization_url) {
+      if (response.ok && data.data?.authorization_url) {
         window.location.href = data.data.authorization_url;
+      } else {
+        toast({ title: "Payment Error", description: data.message || "Could not initialize payment.", variant: "destructive" });
       }
     } catch (err) {
       toast({ title: "Payment Error", description: "Could not initialize payment.", variant: "destructive" });
     }
   };
+
+  const handleIdCardRequest = async () => {
+    const token = localStorage.getItem("token");
+    if (profile.duesStatus !== 'Paid') {
+      toast({ 
+        title: "Dues Required", 
+        description: "You must pay your NACOS dues before requesting an ID card.", 
+        variant: "destructive" 
+      });
+      setActiveTab("dues");
+      return;
+    }
+
+    try {
+      toast({ title: "Submitting Request", description: "Sending your ID card request..." });
+      const response = await fetch('http://localhost:5000/api/services/id-card/request', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          full_name: profile.fullName,
+          matric_number: profile.matricNumber,
+          passport_url: profile.profileImage ? `http://localhost:5000${profile.profileImage}` : ""
+        })
+      });
+      
+      if (response.ok) {
+        toast({ title: "Success", description: "ID card request submitted! We'll notify you when it's ready." });
+        setProfile({ ...profile, idCardStatus: "Processing" });
+      } else {
+        const data = await response.json();
+        toast({ title: "Request Failed", description: data.message, variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to submit request.", variant: "destructive" });
+    }
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-white">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">Verifying session...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -440,88 +526,180 @@ const Dashboard = () => {
           )}
 
           {activeTab === "dues" && (
-            <div className="max-w-2xl animate-reveal pb-12">
+            <div className="max-w-4xl animate-reveal pb-12">
               <h2 className="font-display text-3xl font-bold text-foreground">Membership Dues</h2>
               <p className="mt-2 text-sm text-muted-foreground">Complete your NACOS LASUSTECH membership dues payment below.</p>
               
-              <div className="mt-8 rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8">
-                <h3 className="font-display text-lg font-bold text-foreground text-black">Official Bank Details</h3>
-                <div className="mt-6 space-y-3">
-                  <div className="rounded-2xl bg-muted/40 p-5">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Bank Name</p>
-                    <p className="mt-1 font-display text-sm font-bold text-foreground">First Bank of Nigeria</p>
+              <div className="mt-8 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+                <div className="rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8">
+                  <div className="flex items-center justify-between border-b border-border pb-6">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Amount Owing</p>
+                      <p className="mt-1 font-display text-3xl font-bold text-foreground">₦{amountOwing.toLocaleString()}</p>
+                    </div>
+                    <div className={`rounded-xl px-4 py-2 text-xs font-bold ${profile.duesStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {profile.duesStatus}
+                    </div>
                   </div>
-                  <div className="rounded-2xl bg-muted/40 p-5">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Account Name</p>
-                    <p className="mt-1 font-display text-sm font-bold text-foreground">NACOS LASUSTECH</p>
-                  </div>
-                  <div className="rounded-2xl bg-muted/40 p-5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Account Number</p>
-                        <p className="mt-1 font-display text-2xl font-bold tracking-widest text-foreground">{ACCOUNT_NUMBER}</p>
-                      </div>
-                      <Button variant="outline" size="sm" onClick={handleCopy} className="h-10 rounded-xl gap-2 text-xs font-bold">
-                        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                        {copied ? "Copied" : "Copy"}
-                      </Button>
+
+                  <div className="mt-8">
+                    <h3 className="font-display text-lg font-bold text-foreground">Payment History</h3>
+                    <div className="mt-4 space-y-4">
+                      {payments.length > 0 ? (
+                        payments.map((pay, i) => (
+                          <div key={i} className="flex items-center justify-between rounded-2xl bg-muted/30 p-4">
+                            <div className="flex items-center gap-4">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm text-primary">
+                                <Check className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold capitalize">{(pay.payment_type || 'Payment').replace('_', ' ')}</p>
+                                <p className="text-[11px] text-muted-foreground">{new Date(pay.created_at).toLocaleDateString()}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-bold text-foreground">₦{(pay.amount / 100).toLocaleString()}</p>
+                              <p className="text-[10px] font-medium text-green-600">Successful</p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-10 text-center">
+                          <CreditCard className="h-10 w-10 text-muted-foreground/30" />
+                          <p className="mt-4 text-xs text-muted-foreground">No payment records found.</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-                <div className="mt-8 rounded-2xl border border-primary/20 bg-primary/5 p-6 shadow-highlight">
-                  <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-primary" />
-                    Pay Online (Instant)
-                  </h4>
-                  <p className="mt-2 text-xs text-muted-foreground">Skip the bank queue and pay your ₦5,000 dues securely via Paystack.</p>
-                  <Button 
-                    onClick={handlePayment} 
-                    className="mt-4 w-full rounded-xl shadow-lg shadow-primary/20"
-                    disabled={profile.duesStatus === 'Paid'}
-                  >
-                    {profile.duesStatus === 'Paid' ? 'Dues Already Paid' : 'Pay Dues Online Now'}
-                  </Button>
-                </div>
 
-                <div className="mt-6 rounded-2xl border border-border bg-muted/20 p-6">
-                  <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-primary" />
-                    Bank Transfer Instructions
-                  </h4>
-                  <ul className="mt-4 space-y-3 text-xs text-muted-foreground font-medium">
-                    <li className="flex gap-2"><span>1.</span> <span>Transfer the exact dues amount to the account above.</span></li>
-                    <li className="flex gap-2"><span>2.</span> <span>Use your <strong>Full Name + Matric</strong> as payment reference.</span></li>
-                    <li className="flex gap-2"><span>3.</span> <span>Upload your receipt to the Financial Secretary portal for verification.</span></li>
-                  </ul>
+                <div className="space-y-6">
+                  <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+                    <h3 className="font-display text-lg font-bold text-foreground">Online Payment</h3>
+                    <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+                      Instant verification. Skip the wait and pay your ₦5,000 session dues via Paystack.
+                    </p>
+                    <Button 
+                      onClick={handlePayment} 
+                      className="mt-6 w-full rounded-xl shadow-lg shadow-primary/20"
+                      disabled={profile.duesStatus === 'Paid'}
+                    >
+                      {profile.duesStatus === 'Paid' ? 'Dues Already Paid' : 'Pay Now with Paystack'}
+                    </Button>
+                    <p className="mt-4 text-center text-[10px] text-muted-foreground">
+                      Powered by <strong>Paystack</strong>. All transactions are secure.
+                    </p>
+                  </div>
+
+                  <div className="rounded-3xl border border-border bg-muted/20 p-6">
+                    <h3 className="text-sm font-bold text-foreground">Manual Bank Transfer</h3>
+                    <div className="mt-4 space-y-4">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase text-muted-foreground">First Bank of Nigeria</p>
+                        <p className="text-xs font-bold">NACOS LASUSTECH</p>
+                        <div className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-white p-3 border border-border">
+                          <span className="font-mono text-sm font-bold tracking-widest">{ACCOUNT_NUMBER}</span>
+                          <button onClick={handleCopy} className="text-primary hover:text-primary/80">
+                            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="rounded-xl bg-amber-50 p-3 border border-amber-100">
+                        <p className="text-[10px] font-medium text-amber-800">
+                          <strong>Note:</strong> Verification for manual transfers takes 24-48 hours. Use your matric number as reference.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
           {activeTab === "idcard" && (
-            <div className="max-w-2xl animate-reveal pb-12">
+            <div className="max-w-4xl animate-reveal pb-12">
               <h2 className="font-display text-3xl font-bold text-foreground">ID Card Registration</h2>
               <p className="mt-2 text-sm text-muted-foreground">Get your official NACOS LASUSTECH identification card.</p>
 
-              <div className="mt-8 rounded-3xl border border-border bg-card p-10 text-center shadow-lg">
-                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 shadow-inner">
-                  <IdIcon className="h-10 w-10 text-primary" />
-                </div>
-                <h3 className="mt-6 font-display text-2xl font-bold text-foreground text-black">
-                  Secure Your Chapter ID
-                </h3>
-                <p className="mt-4 text-sm leading-relaxed text-muted-foreground px-4">
-                  The ID card serves as proof of membership and is mandatory for all students to participate in official chapter activities and workshops.
-                </p>
-                <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:justify-center">
-                  <a href="https://nacosid.tmb.it.com" target="_blank" rel="noopener noreferrer">
-                    <Button size="lg" className="w-full gap-2 rounded-2xl font-bold shadow-xl shadow-primary/30 sm:w-auto">
-                      Access ID Portal <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </a>
-                  <Button variant="outline" className="rounded-2xl font-bold sm:w-auto overflow-hidden text-black transition-all hover:bg-muted">
-                    Learn Requirements
+              <div className="mt-8 grid gap-8 lg:grid-cols-2">
+                <div className="rounded-3xl border border-border bg-card p-8 shadow-sm">
+                  <h3 className="font-display text-xl font-bold text-foreground">Registration Status</h3>
+                  
+                  <div className="mt-8 flex flex-col items-center text-center">
+                    <div className={`relative flex h-24 w-24 items-center justify-center rounded-full border-4 ${
+                      profile.idCardStatus === 'Ready' ? 'border-green-500 bg-green-50' : 
+                      profile.idCardStatus === 'Processing' ? 'border-blue-500 bg-blue-50' :
+                      'border-border bg-muted/30'
+                    }`}>
+                      <IdIcon className={`h-10 w-10 ${
+                        profile.idCardStatus === 'Ready' ? 'text-green-500' : 
+                        profile.idCardStatus === 'Processing' ? 'text-blue-500' :
+                        'text-muted-foreground'
+                      }`} />
+                    </div>
+                    <h4 className="mt-4 font-display text-lg font-bold">{profile.idCardStatus}</h4>
+                    <p className="mt-2 text-xs text-muted-foreground max-w-[200px]">
+                      {profile.idCardStatus === 'Not Registered' ? 'You haven\'t started your ID card registration yet.' : 
+                       profile.idCardStatus === 'Processing' ? 'Our team is verifying your data and printing your card.' :
+                       'Your ID card is ready for collection at the NACOS Secretariat.'}
+                    </p>
+                  </div>
+
+                  <div className="mt-10 space-y-4">
+                    <div className="flex items-center justify-between rounded-xl border border-border p-4">
+                      <span className="text-xs font-medium text-muted-foreground">Payment Status</span>
+                      <span className={`text-xs font-bold ${profile.duesStatus === 'Paid' ? 'text-green-600' : 'text-amber-600'}`}>
+                        {profile.duesStatus === 'Paid' ? 'Verified' : 'Pending Dues'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl border border-border p-4">
+                      <span className="text-xs font-medium text-muted-foreground">Biometrics & Photo</span>
+                      <span className={`text-xs font-bold ${profile.profileImage ? 'text-green-600' : 'text-amber-600'}`}>
+                        {profile.profileImage ? 'Uploaded' : 'Missing Photo'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <Button 
+                    onClick={handleIdCardRequest}
+                    disabled={profile.idCardStatus !== 'Not Registered'}
+                    className="mt-8 w-full rounded-2xl shadow-lg shadow-primary/20"
+                  >
+                    {profile.idCardStatus === 'Not Registered' ? 'Request New ID Card' : 'Request Already Submitted'}
                   </Button>
+                </div>
+
+                <div className="rounded-3xl border border-primary/10 bg-primary/5 p-8 shadow-sm">
+                  <h3 className="font-display text-xl font-bold text-primary">ID Card Portal</h3>
+                  <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                    Our central ID system managed on cPanel allows you to manage your global NACOS profile.
+                  </p>
+                  
+                  <div className="mt-8 rounded-2xl bg-white p-6 shadow-sm">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                        <ExternalLink className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-foreground">Self-Service Portal</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Access <strong>nacosid.tmb.it.com</strong> to download digital copies or update your passport.
+                        </p>
+                      </div>
+                    </div>
+                    <a href="https://nacosid.tmb.it.com" target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" className="mt-6 w-full rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50">
+                        Visit External Portal
+                      </Button>
+                    </a>
+                  </div>
+
+                  <div className="mt-6 p-4 border-l-4 border-blue-500 bg-blue-50/50">
+                    <h5 className="text-[11px] font-bold uppercase tracking-wider text-blue-700">Notice</h5>
+                    <p className="mt-1 text-[11px] text-blue-600 leading-relaxed font-medium">
+                      Physical ID cards are printed in batches. Please allow 7-14 working days after request for processing.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

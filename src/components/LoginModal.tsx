@@ -4,6 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface LoginModalProps {
   open: boolean;
@@ -15,8 +22,6 @@ const LoginModal = ({ open, onClose }: LoginModalProps) => {
   const navigate = useNavigate();
   const [surname, setSurname] = useState("");
   const [matric, setMatric] = useState("");
-
-  if (!open) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,58 +65,56 @@ const LoginModal = ({ open, onClose }: LoginModalProps) => {
     }
   };
 
-
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/50 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10">
-            <LogIn className="h-4 w-4 text-primary" />
+    <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
+      <DialogContent className="sm:max-w-[400px] border-border/50 shadow-2xl">
+        <DialogHeader className="flex flex-col items-center text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 mb-4">
+            <LogIn className="h-6 w-6 text-primary" />
           </div>
-          <div>
-            <h3 className="font-display text-lg font-bold text-foreground">Member Login</h3>
-            <p className="text-xs text-muted-foreground">Access your NACOS member portal</p>
-          </div>
-        </div>
+          <DialogTitle className="font-display text-2xl font-bold">Member Login</DialogTitle>
+          <DialogDescription className="text-sm">
+            Access your NACOS LASUSTECH member portal.
+          </DialogDescription>
+        </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-xs font-medium text-foreground">Surname</label>
+        <form onSubmit={handleSubmit} className="mt-4 space-y-5">
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-foreground">Surname</label>
             <Input
               value={surname}
               onChange={(e) => setSurname(e.target.value.toLowerCase())}
               required
-              className="mt-1"
-              placeholder="Enter surname in lowercase"
+              className="rounded-xl border-border/50 bg-muted/30 focus:ring-primary/20"
+              placeholder="Enter surname (lowercase)"
             />
-            <p className="mt-1 text-[11px] text-muted-foreground">Must be entered in lowercase</p>
+            <p className="text-[10px] text-muted-foreground ml-1">Must be entered in lowercase</p>
           </div>
-          <div>
-            <label className="text-xs font-medium text-foreground">Matric Number</label>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-foreground">Matric Number</label>
             <Input
               value={matric}
               onChange={(e) => setMatric(e.target.value)}
               required
-              className="mt-1"
-              placeholder="e.g. 220401001"
+              className="rounded-xl border-border/50 bg-muted/30 focus:ring-primary/20"
+              placeholder="e.g. 230303010052"
             />
           </div>
-          <Button type="submit" className="w-full font-semibold">
-            Login
+          <Button type="submit" className="w-full h-12 rounded-xl font-bold shadow-lg shadow-primary/20 transition-all active:scale-[0.98]">
+            Sign In to Portal
           </Button>
         </form>
 
-        <button
-          onClick={onClose}
-          className="mt-4 w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
+        <div className="mt-4 text-center">
+          <button
+            onClick={onClose}
+            className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4"
+          >
+            Go Back
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

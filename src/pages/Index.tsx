@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   LogIn,
@@ -30,9 +30,9 @@ import moment3 from "@/assets/Events/bootcamp_onboarding/PHOTO-2026-04-29-19-36-
 import moment4 from "@/assets/Events/bootcamp_onboarding/PHOTO-2026-04-29-19-36-11(1).jpg";
 
 const quickActions = [
-  { icon: LogIn, label: "Login", path: "#", action: "login", desc: "Access your member portal" },
-  { icon: CreditCard, label: "Pay Dues", path: "#", action: "login", desc: "Pay your NACOS dues" },
-  { icon: IdCard, label: "ID Card", path: "#", action: "login", desc: "Register for your NACOS ID" },
+  { icon: LogIn, label: "Login", path: "#", action: "login", targetTab: "overview", desc: "Access your member portal" },
+  { icon: CreditCard, label: "Pay Dues", path: "#", action: "login", targetTab: "dues", desc: "Pay your NACOS dues" },
+  { icon: IdCard, label: "ID Card", path: "#", action: "login", targetTab: "idcard", desc: "Register for your NACOS ID" },
   { icon: BookOpen, label: "Constitution", path: "/constitution", desc: "Read the chapter constitution" },
 ];
 
@@ -40,10 +40,16 @@ const galleryImages = [moment1, moment2, moment3, moment4];
 
 const Index = () => {
   const [loginOpen, setLoginOpen] = useState(false);
+  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+  const navigate = useNavigate();
 
   const handleAction = (item: typeof quickActions[0]) => {
     if (item.action === "login") {
-      setLoginOpen(true);
+      if (isLoggedIn) {
+        navigate("/dashboard", { state: { tab: item.targetTab } });
+      } else {
+        setLoginOpen(true);
+      }
     }
   };
 
@@ -67,8 +73,9 @@ const Index = () => {
   };
 
   return (
-    <Layout>
+    <>
       <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
+      <Layout>
       {/* Hero */}
       <section className="relative isolate overflow-hidden bg-[#08111d]">
         <div className="absolute inset-0">
@@ -93,21 +100,21 @@ const Index = () => {
             </p>
 
             <div className="mt-10 flex flex-col sm:flex-row gap-4 animate-reveal-delay-2 w-full justify-center px-4">
-              <Link to="https://portal.nacos.org.ng/register" className="w-full sm:w-auto">
+              <a href="https://portal.nacos.org.ng/register" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
                 <Button
                   size="lg"
                   className="w-full sm:min-w-[200px] bg-primary text-xs sm:text-base font-bold text-white hover:bg-primary/90 shadow-2xl shadow-primary/40 p-6"
                 >
                   Join NACOS National
                 </Button>
-              </Link>
+              </a>
 
               <Button
                 size="lg"
-                onClick={() => setLoginOpen(true)}
+                onClick={() => isLoggedIn ? navigate("/dashboard", { state: { tab: "overview" } }) : setLoginOpen(true)}
                 className="w-full sm:w-auto sm:min-w-[200px] bg-[#1F5FAF] text-xs sm:text-base font-bold text-white hover:bg-[#184d90] shadow-2xl shadow-blue-500/40 p-6"
               >
-                Go to Dashboard
+                {isLoggedIn ? "Visit Dashboard" : "Go to Dashboard"}
               </Button>
             </div>
           </div>
@@ -151,10 +158,10 @@ const Index = () => {
 
                     <div className="min-w-0 flex-1">
                       <h3 className="text-[11px] sm:text-sm font-bold text-foreground">
-                        {item.label}
+                        {item.action === "login" && isLoggedIn ? "Visit Dashboard" : item.label}
                       </h3>
                       <p className="hidden sm:block mt-1 text-[11px] leading-5 text-muted-foreground">
-                        {item.desc}
+                        {item.action === "login" && isLoggedIn ? "You are currently logged in" : item.desc}
                       </p>
                     </div>
 
@@ -366,26 +373,27 @@ const Index = () => {
     </p>
 
           <div className="mt-10 flex flex-row justify-center gap-3">
-            <Link to="https://portal.nacos.org.ng/register" className="flex-1 sm:flex-initial">
+            <a href="https://portal.nacos.org.ng/register" target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-initial">
               <Button
                 size="lg"
                 className="w-full bg-white font-bold text-primary hover:bg-white/90 shadow-xl shadow-black/10 p-2 sm:p-6 text-[10px] sm:text-base"
               >
                 Join NACOS National
               </Button>
-            </Link>
+            </a>
             <Button
               size="lg"
               variant="outline"
-              onClick={() => setLoginOpen(true)}
+              onClick={() => isLoggedIn ? navigate("/dashboard", { state: { tab: "overview" } }) : setLoginOpen(true)}
               className="flex-1 sm:flex-initial border-white/30 font-bold text-secondary hover:bg-white/10 p-2 sm:p-6 text-[10px] sm:text-base"
             >
-              Member Dashboard
+              {isLoggedIn ? "Visit Dashboard" : "Member Dashboard"}
             </Button>
           </div>
     </div>
 </section>
-    </Layout>
+      </Layout>
+    </>
   );
 };
 
