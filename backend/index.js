@@ -53,6 +53,11 @@ app.use(limiter); // Apply general rate limit to all requests
 // Start Birthday Service (Daily checks)
 BirthdayService.start();
 
+// Root route for health checks (prevents 404 on Render/deployment pings)
+app.get('/', (req, res) => {
+  res.status(200).send('NACOS LASUSTECH API is running.');
+});
+
 /**
  * THE CORE ROUTES
  * ---------------------------------------------------------
