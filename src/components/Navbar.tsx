@@ -132,13 +132,26 @@ const Navbar = () => {
                   <div className="relative group profile-menu-container">
                     <button 
                       onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                      className="flex h-10 w-10 overflow-hidden rounded-full border-2 border-primary/20 transition-all hover:border-primary/50"
+                      className="flex h-10 w-10 overflow-hidden rounded-full border-2 border-primary/20 transition-all hover:border-primary/50 bg-muted items-center justify-center"
                     >
-                      <img
-                        src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=100&auto=format&fit=crop"
-                        alt="Profile"
-                        className="h-full w-full object-cover"
-                      />
+                      {(() => {
+                        try {
+                          const userStr = localStorage.getItem("user");
+                          const user = (userStr && userStr !== "null") ? JSON.parse(userStr) : {};
+                          if (!user || typeof user !== 'object') return <div className="h-full w-full flex items-center justify-center bg-muted"><Users className="h-4 w-4 text-muted-foreground/40" /></div>;
+                          
+                          const profileImage = user.profile_image || user.profileImage;
+                          if (profileImage && typeof profileImage === 'string') {
+                            const src = profileImage.startsWith('http') 
+                              ? profileImage 
+                              : `https://nacosid.tmb.it.com/${profileImage.startsWith('/') ? profileImage.substring(1) : profileImage}`;
+                            return <img src={src} alt="Profile" className="h-full w-full object-cover" />;
+                          }
+                        } catch (e) {
+                          console.error("Navbar Image Error:", e);
+                        }
+                        return <div className="h-full w-full flex items-center justify-center bg-muted"><Users className="h-4 w-4 text-muted-foreground/40" /></div>;
+                      })()}
                     </button>
                     {/* Simplified Dropdown */}
                     {(profileMenuOpen || false) && (
@@ -207,14 +220,48 @@ const Navbar = () => {
               <div className="flex items-center gap-3">
                 {localStorage.getItem("isLoggedIn") === "true" ? (
                   <div className="flex items-center gap-3">
-                    <img
-                      src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=100&auto=format&fit=crop"
-                      alt="Profile"
-                      className="h-10 w-10 rounded-full border-2 border-primary/20 object-cover"
-                    />
+                    {(() => {
+                      try {
+                        const userStr = localStorage.getItem("user");
+                        const user = (userStr && userStr !== "null") ? JSON.parse(userStr) : {};
+                        if (!user || typeof user !== 'object') return <div className="h-10 w-10 rounded-full border-2 border-primary/20 bg-muted flex items-center justify-center"><Users className="h-4 w-4 text-muted-foreground/40" /></div>;
+                        
+                        const profileImage = user.profile_image || user.profileImage;
+                        if (profileImage && typeof profileImage === 'string') {
+                          const src = profileImage.startsWith('http') 
+                            ? profileImage 
+                            : `https://nacosid.tmb.it.com/${profileImage.startsWith('/') ? profileImage.substring(1) : profileImage}`;
+                          return <img src={src} alt="Profile" className="h-10 w-10 rounded-full border-2 border-primary/20 object-cover" />;
+                        }
+                      } catch (e) {
+                        console.error("Mobile Navbar Image Error:", e);
+                      }
+                      return <div className="h-10 w-10 rounded-full border-2 border-primary/20 bg-muted flex items-center justify-center"><Users className="h-4 w-4 text-muted-foreground/40" /></div>;
+                    })()}
                     <div className="flex flex-col">
-                      <span className="font-display font-bold text-sm">Toluwani Moses</span>
-                      <span className="text-[10px] text-muted-foreground font-medium">Verified Member</span>
+                      <span className="font-display font-bold text-sm">
+                        {(() => {
+                          try {
+                            const userStr = localStorage.getItem("user");
+                            const user = (userStr && userStr !== "null") ? JSON.parse(userStr) : {};
+                            return String(user.name || "Member");
+                          } catch (e) {
+                            return "Member";
+                          }
+                        })()}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+                        {(() => {
+                          try {
+                            const userStr = localStorage.getItem("user");
+                            const user = (userStr && userStr !== "null") ? JSON.parse(userStr) : {};
+                            if (!user || typeof user !== 'object') return "Verified Member";
+                            return (user.post && typeof user.post === 'string' && user.post.toLowerCase() !== 'student') ? user.post : "Verified Member";
+                          } catch (e) {
+                            return "Verified Member";
+                          }
+                        })() || "Verified Member"}
+                      </span>
                     </div>
                   </div>
                 ) : (

@@ -196,15 +196,15 @@ const Footer = () => {
                 <Facebook className="h-4 w-4" />
               </a>
 
-              {/* <a
-                href="https://twitter.com/nacoslasustech"
+              <a
+                href="https://x.com/nacoslasustech"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition-all hover:bg-black hover:text-white"
                 title="X (Twitter)"
               >
                 <XIcon className="h-3.5 w-3.5" />
-              </a> */}
+              </a>
 
               <a
                 href="https://instagram.com/nacoslasustech"
@@ -217,7 +217,7 @@ const Footer = () => {
               </a>
 
               <a
-                href="https://www.tiktok.com/@nacoslasustech2"
+                href="https://www.tiktok.com/@nacoslasustech"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition-all hover:bg-[#EE1D52] hover:text-white"
@@ -227,7 +227,7 @@ const Footer = () => {
               </a>
 
               <a
-                href="https://www.linkedin.com/in/nacos-lasustech-3aa8833b3?trk=contact-info"
+                href="https://www.linkedin.com/company/nacos-lasustech"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition-all hover:bg-[#0A66C2] hover:text-white"
@@ -266,7 +266,7 @@ const Footer = () => {
               </span>
             </p>
             <p className="hidden md:block opacity-10">|</p>
-            <p>Photo Credit: <a href="https://lasustech.edu.ng" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Newton Media</a></p>
+            <p>Photo Credit: <a href="https://instagram.com/newtonimage" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Newton Media</a></p>
           </div>
         </div>
       </div>

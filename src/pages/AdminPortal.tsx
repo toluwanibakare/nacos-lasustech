@@ -3,6 +3,7 @@ import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { fetchApi } from "@/lib/api";
 import { 
   Users, 
   Calendar, 
@@ -21,8 +22,15 @@ const AdminPortal = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    if (user.role !== "admin") {
+    let user: any = {};
+    try {
+      const userStr = localStorage.getItem("user");
+      user = (userStr && userStr !== "null") ? JSON.parse(userStr) : {};
+    } catch (e) {
+      console.error("Admin user parse error", e);
+    }
+
+    if (!user || user.role !== "admin") {
       toast({ title: "Unauthorized", description: "Only admins can enter here, bro!", variant: "destructive" });
       navigate("/dashboard");
       return;
@@ -30,38 +38,34 @@ const AdminPortal = () => {
     fetchAdminData();
   }, [navigate]);
 
+  const [stats, setStats] = useState<any>({});
+
   const fetchAdminData = async () => {
-    const token = localStorage.getItem("token");
     try {
-      // Fetching all management data
-      const [excos, evts, blgs, msgs] = await Promise.all([
-        fetch('http://localhost:5000/api/content/executives').then(r => r.json()),
-        fetch('http://localhost:5000/api/content/events').then(r => r.json()),
-        fetch('http://localhost:5000/api/content/blogs').then(r => r.json()),
-        fetch('http://localhost:5000/api/admin/messages', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }).then(r => r.json())
+      // Fetching all management data using our API utility
+      const [excos, evts, blgs, msgs, sysStats] = await Promise.all([
+        fetchApi('/content/executives'),
+        fetchApi('/content/events'),
+        fetchApi('/content/blogs'),
+        fetchApi('/admin/messages'),
+        fetchApi('/admin/stats')
       ]);
 
       setData({ executives: excos, events: evts, blogs: blgs, messages: msgs });
+      setStats(sysStats);
     } catch (error) {
       console.error(error);
+      toast({ title: "Sync Error", description: "Could not fetch latest management data.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (type: string, id: number) => {
-    const token = localStorage.getItem("token");
     try {
-      const response = await fetch(`http://localhost:5000/api/admin/${type}/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        toast({ title: "Deleted!", description: `${type} removed successfully.` });
-        fetchAdminData();
-      }
+      await fetchApi(`/admin/${type}/${id}`, { method: 'DELETE' });
+      toast({ title: "Deleted!", description: `${type} removed successfully.` });
+      fetchAdminData();
     } catch (error) {
       toast({ title: "Error", description: "Could not delete item.", variant: "destructive" });
     }
@@ -110,10 +114,10 @@ const AdminPortal = () => {
           {activeTab === 'dashboard' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
-                { label: 'Total Excos', value: data.executives.length, icon: Users, color: 'text-blue-600' },
-                { label: 'Active Events', value: data.events.length, icon: Calendar, color: 'text-green-600' },
-                { label: 'Blog Posts', value: data.blogs.length, icon: FileText, color: 'text-purple-600' },
-                { label: 'Messages', value: data.messages.length, icon: MessageSquare, color: 'text-amber-600' },
+                { label: 'Total Students', value: stats.totalStudents || 0, icon: Users, color: 'text-blue-600' },
+                { label: 'Dues Paid', value: stats.paidStudents || 0, icon: Calendar, color: 'text-green-600' },
+                { label: 'Total Revenue', value: `₦${(stats.revenue || 0).toLocaleString()}`, icon: FileText, color: 'text-purple-600' },
+                { label: 'Pending ID Cards', value: stats.pendingIDCards || 0, icon: MessageSquare, color: 'text-amber-600' },
               ].map((stat, i) => (
                 <div key={i} className="bg-white p-6 rounded-3xl border border-border shadow-sm">
                   <stat.icon className={`h-8 w-8 ${stat.color} mb-4`} />

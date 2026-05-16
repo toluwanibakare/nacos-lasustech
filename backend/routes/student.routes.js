@@ -1,127 +1,123 @@
 import { Router } from 'express';
-import db from '../db.js';
+import axios from 'axios';
 import protect from '../middleware/auth.middleware.js';
+import upload from '../middleware/upload.middleware.js';
+import FormData from 'form-data';
 
 const router = Router();
+const ID_SYSTEM_API = 'https://nacosid.tmb.it.com/api.php';
+const API_KEY = process.env.ID_SYSTEM_API_KEY || 'NACOS_LASUSTECH_SECURE_API_KEY';
 
 /**
- * Student Routes
+ * Student Routes (Pure Proxy Mode)
  * ---------------------------------------------------------
- * These are protected. Only logged-in students can get here.
+ * These routes communicate directly with the central PHP system.
  */
-
-// Get Profile
-router.get('/profile', protect, async (req, res) => {
-  try {
-    const [rows] = await db.query(
-      'SELECT id, full_name, matric_number, level, dues_status, wallet_balance, profile_image FROM students WHERE id = ?',
-      [req.user.id]
-    );
-    
-    if (rows.length === 0) {
-      return res.status(404).json({ message: 'User not found!' });
-    }
-
-    res.json(rows[0]);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching profile.' });
-  }
-});
 
 // Get Dashboard Overview
 router.get('/dashboard', protect, async (req, res) => {
+  console.log(`📡 Fetching Dashboard for: ${req.user.matric}`);
   try {
-    // 1. Get student stats
-    const [studentRows] = await db.query(
-      'SELECT full_name, level, dues_status, id_card_status, wallet_balance, attendance_percentage, resources_count, profile_image, matric_number FROM students WHERE id = ?',
-      [req.user.id]
-    );
-
-    if (studentRows.length === 0) {
-      return res.status(404).json({ message: 'User not found!' });
-    }
-
-    // 2. Get recent activities
-    const [activityRows] = await db.query(
-      'SELECT type, status, activity_date FROM activities WHERE student_id = ? ORDER BY activity_date DESC LIMIT 5',
-      [req.user.id]
-    );
-
-    res.json({
-      profile: studentRows[0],
-      activities: activityRows
+    const response = await axios.get(`${ID_SYSTEM_API}?action=dashboard&matric=${req.user.matric}`, {
+      headers: { 'X-API-KEY': API_KEY }
     });
+    console.log('✅ Dashboard Data Received:', JSON.stringify(response.data).substring(0, 200) + '...');
+    res.json(response.data);
   } catch (error) {
-    console.error('❌ Dashboard Fetch Error:', error);
-    res.status(500).json({ message: 'Error fetching dashboard data.' });
+    console.error('❌ Dashboard Proxy Error:', error.response?.data || error.message);
+    res.status(500).json({ message: 'Error fetching dashboard data from Central System.' });
   }
 });
 
-import sharp from 'sharp';
-import fs from 'fs/promises';
-import path from 'path';
-import upload from '../middleware/upload.middleware.js';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 // Update Profile Picture
 router.put('/profile-image', protect, upload.single('image'), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: 'No image uploaded!' });
-  }
+  if (!req.file) return res.status(400).json({ message: 'No image uploaded!' });
 
+  console.log(`📡 Uploading Image for: ${req.user.matric}`);
   try {
-    const uploadsDir = path.join(__dirname, '..', 'uploads', 'profiles');
-    // Ensure directory exists
-    await fs.mkdir(uploadsDir, { recursive: true });
+    const formData = new FormData();
+    formData.append('image', req.file.buffer, {
+      filename: req.file.originalname,
+      contentType: req.file.mimetype,
+    });
+    formData.append('matric_number', req.user.matric);
 
-    const filename = `student-${req.user.id}-${Date.now()}.webp`;
-    const filepath = path.join(uploadsDir, filename);
+    const response = await axios.post(`${ID_SYSTEM_API}?action=update_image`, formData, {
+      headers: { ...formData.getHeaders(), 'X-API-KEY': API_KEY }
+    });
 
-    // Process and compress image with Sharp
-    await sharp(req.file.buffer)
-      .resize(500, 500, { fit: 'cover' })
-      .webp({ quality: 80 })
-      .toFile(filepath);
-
-    const imageUrl = `/uploads/profiles/${filename}`;
-
-    // Save URL to database
-    await db.query('UPDATE students SET profile_image = ? WHERE id = ?', [imageUrl, req.user.id]);
-
-    res.json({ message: 'Profile picture updated successfully!', imageUrl });
+    console.log('✅ Image Update Response:', response.data);
+    res.json(response.data);
   } catch (error) {
-    console.error('❌ Upload Error:', error);
-    res.status(500).json({ message: 'Error processing image.' });
+    console.error('❌ Image Sync Error:', error.response?.data || error.message);
+    res.status(500).json({ message: 'Error syncing image to Central System.' });
   }
 });
 
 // Update Profile
 router.put('/profile', protect, async (req, res) => {
-  const { full_name, level, email } = req.body;
+  console.log(`📡 Updating Profile (JSON) for: ${req.user.matric}`);
+  const { full_name, level, email, whatsapp_number, gender, birthday } = req.body;
 
-  
+  if (!whatsapp_number) {
+    return res.status(400).json({ message: 'WhatsApp number is compulsory!' });
+  }
+
   try {
-    await db.query(
-      'UPDATE students SET full_name = ?, level = ?, email = ? WHERE id = ?',
-      [full_name, level, email, req.user.id]
-    );
-    res.json({ message: 'Profile updated successfully! Lookin\' good.' });
+    const profileData = {
+      action: 'update_profile',
+      matric_number: req.user.matric,
+      matric_no: req.user.matric,
+      full_name,
+      level,
+      email,
+      whatsapp_number,
+      gender,
+      birthday: birthday || null,
+      api_key: API_KEY
+    };
+
+    const response = await axios.post(`${ID_SYSTEM_API}?action=update_profile`, profileData, {
+      headers: { 
+        'X-API-KEY': API_KEY,
+        'Content-Type': 'application/json'
+      },
+      timeout: 10000
+    });
+
+    const isSuccess = response.data.status === 'success' || response.data.id || response.data.matric_no;
+    console.log('✅ Profile Update Response:', response.data);
+
+    if (isSuccess) {
+      res.json(response.data);
+    } else {
+      throw new Error(response.data.message || 'Update failed');
+    }
   } catch (error) {
-    res.status(500).json({ message: 'Error updating profile.' });
+    console.error('❌ Profile Proxy Error Details:');
+    if (error.response) {
+      console.error('Status:', error.response.status);
+      console.error('Data:', JSON.stringify(error.response.data));
+    } else {
+      console.error('Message:', error.message);
+    }
+    res.status(500).json({ 
+      message: 'Error updating profile on Central System.',
+      details: error.response?.data || error.message 
+    });
   }
 });
 
-
-// Get my payments
+// Get Payment History
 router.get('/payments', protect, async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM payments WHERE student_id = ? ORDER BY created_at DESC', [req.user.id]);
-    res.json(rows);
+    const response = await axios.get(`${ID_SYSTEM_API}?action=payments&matric=${req.user.matric}`, {
+      headers: { 'X-API-KEY': API_KEY }
+    });
+    res.json(response.data || []);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching payments.' });
+    console.error('❌ Payments Fetch Error:', error.message);
+    res.json([]); 
   }
 });
 

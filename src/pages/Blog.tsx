@@ -1,8 +1,11 @@
+import { useState } from "react";
 import Layout from "@/components/Layout";
 import BlogCard from "@/components/BlogCard";
-import { blogs } from "@/data/blogs";
+import { blogs as staticBlogs } from "@/data/blogs";
 
 const Blog = () => {
+  const [blogs] = useState<any[]>(staticBlogs);
+
   return (
     <Layout>
       <section className="bg-foreground py-14 md:py-20">

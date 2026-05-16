@@ -4,7 +4,6 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
-import db from './db.js';
 import paymentRoutes from './routes/payment.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import studentRoutes from './routes/student.routes.js';
@@ -12,6 +11,7 @@ import contentRoutes from './routes/content.routes.js';
 import servicesRoutes from './routes/services.routes.js';
 import contactRoutes from './routes/contact.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import BirthdayService from './services/birthday.service.js';
 
 
 // Pulling in our environment variables
@@ -50,6 +50,9 @@ app.use(express.json({ limit: '10kb' })); // Security: Limit JSON body size to p
 app.use(morgan('dev'));  // Log requests to the console
 app.use(limiter); // Apply general rate limit to all requests
 
+// Start Birthday Service (Daily checks)
+BirthdayService.start();
+
 /**
  * THE CORE ROUTES
  * ---------------------------------------------------------
@@ -74,12 +77,42 @@ const __dirname = path.dirname(__filename);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // A simple health check to make sure the lights are on
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'up', 
     timestamp: new Date().toISOString(),
     message: 'NACOS LASUSTECH Backend is humming along nicely.'
   });
+});
+
+// Diagnostic Ping to Central System
+app.get('/api/ping-central', async (req, res) => {
+  try {
+    const start = Date.now();
+    // Using POST because we know the server responds to POST
+    const response = await axios.post('https://nacosid.tmb.it.com/api.php?action=login', 
+      { matric_number: '000', password: '000' },
+      {
+        timeout: 5000,
+        headers: { 
+          'X-API-KEY': process.env.ID_SYSTEM_API_KEY || 'NACOS_LASUSTECH_SECURE_API_KEY',
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    res.json({
+      status: 'success',
+      latency: `${Date.now() - start}ms`,
+      central_response: response.data
+    });
+  } catch (error) {
+    res.status(502).json({
+      status: 'error',
+      message: 'Could not reach central system',
+      error: error.message,
+      code: error.code
+    });
+  }
 });
 
 /**

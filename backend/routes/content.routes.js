@@ -1,41 +1,48 @@
 import { Router } from 'express';
-import db from '../db.js';
+import axios from 'axios';
 
 const router = Router();
 
 /**
- * Content Routes
- * ---------------------------------------------------------
- * These are public. Everyone can see who the execs are.
+ * Content Routes via External API
  */
 
 // Get Executives
 router.get('/executives', async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM executives ORDER BY id ASC');
-    res.json(rows);
+    const response = await axios.get('https://nacosid.tmb.it.com/api.php?action=executives', {
+      headers: { 'X-API-KEY': process.env.ID_SYSTEM_API_KEY || 'NACOS_LASUSTECH_SECURE_API_KEY' }
+    });
+    res.json(response.data || []);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching executives.' });
+    console.error('❌ External Executives Fetch Error:', error.message);
+    res.json([]);
   }
 });
 
 // Get Events
 router.get('/events', async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM events WHERE event_date >= CURDATE() ORDER BY event_date ASC');
-    res.json(rows);
+    const response = await axios.get('https://nacosid.tmb.it.com/api.php?action=events', {
+      headers: { 'X-API-KEY': process.env.ID_SYSTEM_API_KEY || 'NACOS_LASUSTECH_SECURE_API_KEY' }
+    });
+    res.json(response.data || []);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching events.' });
+    console.error('❌ External Events Fetch Error:', error.message);
+    res.json([]);
   }
 });
 
 // Get Blogs
 router.get('/blogs', async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM blogs ORDER BY published_at DESC');
-    res.json(rows);
+    const response = await axios.get('https://nacosid.tmb.it.com/api.php?action=blogs', {
+      headers: { 'X-API-KEY': process.env.ID_SYSTEM_API_KEY || 'NACOS_LASUSTECH_SECURE_API_KEY' }
+    });
+    res.json(response.data || []);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching blogs.' });
+    console.error('❌ External Blogs Fetch Error:', error.message);
+    res.json([]);
   }
 });
 

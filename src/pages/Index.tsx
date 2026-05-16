@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -15,13 +15,13 @@ import SectionHeading from "@/components/SectionHeading";
 import ExecutiveCard from "@/components/ExecutiveCard";
 import EventCard from "@/components/EventCard";
 import LoginModal from "@/components/LoginModal";
-import { executives } from "@/data/executives";
-import { events } from "@/data/events";
-import { blogs } from "@/data/blogs";
+import { fetchApi } from "@/lib/api";
 import BlogCard from "@/components/BlogCard";
 import heroBg from "@/assets/Events/bootcamp_onboarding/PHOTO-2026-04-29-19-36-06.jpg";
 import nacosLogo from "@/assets/nacos_logo.png";
 import lasustechLogo from "@/assets/lasustech_logo.png";
+import { executives as staticExecutives } from "@/data/executives";
+import { events as staticEvents } from "@/data/events";
 
 // Latest Chapter Moments
 import moment1 from "@/assets/Events/bootcamp_onboarding/PHOTO-2026-04-29-19-36-10.jpg";
@@ -40,7 +40,23 @@ const galleryImages = [moment1, moment2, moment3, moment4];
 
 const Index = () => {
   const [loginOpen, setLoginOpen] = useState(false);
-  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+  const [redirectTab, setRedirectTab] = useState<string | undefined>(undefined);
+  const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem("isLoggedIn") === "true");
+  
+  // Update login state if storage changes
+  useEffect(() => {
+    const checkLogin = () => {
+      setIsLoggedIn(localStorage.getItem("isLoggedIn") === "true");
+    };
+    window.addEventListener('storage', checkLogin);
+    return () => window.removeEventListener('storage', checkLogin);
+  }, []);
+
+  // Using static data directly from your .ts files as requested
+  const [data] = useState({ 
+    executives: staticExecutives, 
+    events: staticEvents 
+  });
   const navigate = useNavigate();
 
   const handleAction = (item: typeof quickActions[0]) => {
@@ -48,6 +64,7 @@ const Index = () => {
       if (isLoggedIn) {
         navigate("/dashboard", { state: { tab: item.targetTab } });
       } else {
+        setRedirectTab(item.targetTab);
         setLoginOpen(true);
       }
     }
@@ -74,7 +91,11 @@ const Index = () => {
 
   return (
     <>
-      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
+      <LoginModal 
+        open={loginOpen} 
+        onClose={() => { setLoginOpen(false); setRedirectTab(undefined); }} 
+        redirectTab={redirectTab}
+      />
       <Layout>
       {/* Hero */}
       <section className="relative isolate overflow-hidden bg-[#08111d]">
@@ -111,7 +132,14 @@ const Index = () => {
 
               <Button
                 size="lg"
-                onClick={() => isLoggedIn ? navigate("/dashboard", { state: { tab: "overview" } }) : setLoginOpen(true)}
+                onClick={() => {
+                  if (isLoggedIn) {
+                    navigate("/dashboard", { state: { tab: "overview" } });
+                  } else {
+                    setRedirectTab("overview");
+                    setLoginOpen(true);
+                  }
+                }}
                 className="w-full sm:w-auto sm:min-w-[200px] bg-[#1F5FAF] text-xs sm:text-base font-bold text-white hover:bg-[#184d90] shadow-2xl shadow-blue-500/40 p-6"
               >
                 {isLoggedIn ? "Visit Dashboard" : "Go to Dashboard"}
@@ -260,9 +288,9 @@ const Index = () => {
             title="Executive Council"
             description="Meet the student leaders steering the chapter toward excellence."
           />
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {executives.slice(0, 4).map((exec) => (
-              <ExecutiveCard key={exec.post} {...exec} />
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+            {data.executives.slice(0, 5).map((exec) => (
+              <ExecutiveCard key={exec.id || exec.post} {...exec} />
             ))}
           </div>
           <div className="mt-8 text-center text-black">
@@ -280,11 +308,11 @@ const Index = () => {
         <div className="container">
           <SectionHeading
             label="Happenings"
-            title="Upcoming Events"
+            title={data.events.some(e => e.upcoming !== false) ? "Upcoming Events" : "Recent Events"}
             description="Stay updated with the latest programs, workshops, and gatherings."
           />
           <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {events.slice(0, 3).map((event) => (
+            {data.events.slice(0, 3).map((event) => (
               <EventCard key={event.id} {...event} />
             ))}
           </div>

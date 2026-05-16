@@ -1,103 +1,83 @@
 import { Router } from 'express';
-import db from '../db.js';
+import axios from 'axios';
 import protect from '../middleware/auth.middleware.js';
 import isAdmin from '../middleware/admin.middleware.js';
 
 const router = Router();
+const ID_SYSTEM_API = 'https://nacosid.tmb.it.com/api.php';
+const API_KEY = process.env.ID_SYSTEM_API_KEY || 'NACOS_LASUSTECH_SECURE_API_KEY';
 
 // Protect all admin routes
 router.use(protect, isAdmin);
 
 /**
- * Admin Management Routes
+ * Admin Management Routes (Proxy Mode)
  * ---------------------------------------------------------
- * Full CRUD for content management.
+ * These routes manage students and payments via the central system.
  */
 
-// --- EXECUTIVES ---
-router.post('/executives', async (req, res) => {
-  const { name, post, level, image_url, description } = req.body;
-  try {
-    await db.query('INSERT INTO executives (name, post, level, image_url, description) VALUES (?, ?, ?, ?, ?)', 
-      [name, post, level, image_url, description]);
-    res.json({ message: 'Executive added successfully!' });
-  } catch (error) { res.status(500).json({ message: error.message }); }
-});
-
-router.delete('/executives/:id', async (req, res) => {
-  try {
-    await db.query('DELETE FROM executives WHERE id = ?', [req.params.id]);
-    res.json({ message: 'Executive removed!' });
-  } catch (error) { res.status(500).json({ message: error.message }); }
-});
-
-// --- EVENTS ---
-router.post('/events', async (req, res) => {
-  const { title, description, event_date, location, image_url } = req.body;
-  try {
-    await db.query('INSERT INTO events (title, description, event_date, location, image_url) VALUES (?, ?, ?, ?, ?)', 
-      [title, description, event_date, location, image_url]);
-    res.json({ message: 'Event created!' });
-  } catch (error) { res.status(500).json({ message: error.message }); }
-});
-
-// --- BLOGS ---
-router.post('/blogs', async (req, res) => {
-  const { title, excerpt, content, image_url, category } = req.body;
-  try {
-    await db.query('INSERT INTO blogs (title, excerpt, content, image_url, category) VALUES (?, ?, ?, ?, ?)', 
-      [title, excerpt, content, image_url, category]);
-    res.json({ message: 'Blog post published!' });
-  } catch (error) { res.status(500).json({ message: error.message }); }
-});
-
-// --- SYSTEM STATS ---
+// Get System Stats
 router.get('/stats', async (req, res) => {
   try {
-    const [students] = await db.query('SELECT COUNT(*) as count FROM students');
-    const [duesPaid] = await db.query("SELECT COUNT(*) as count FROM students WHERE dues_status = 'Paid'");
-    const [totalRevenue] = await db.query('SELECT SUM(amount) as total FROM payments WHERE status = "success"');
-    const [pendingIDs] = await db.query("SELECT COUNT(*) as count FROM id_card_requests WHERE status = 'Pending'");
-
-    res.json({
-      totalStudents: students[0].count,
-      paidStudents: duesPaid[0].count,
-      revenue: totalRevenue[0].total || 0,
-      pendingIDCards: pendingIDs[0].count
+    const response = await axios.get(`${ID_SYSTEM_API}?action=get_admin_stats`, {
+      headers: { 'X-API-KEY': API_KEY }
     });
-  } catch (error) { res.status(500).json({ message: error.message }); }
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching admin stats from central system.' });
+  }
 });
 
-// --- STUDENT MANAGEMENT ---
+// Get Student List
 router.get('/students', async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT id, full_name, matric_number, level, dues_status, id_card_status FROM students');
-    res.json(rows);
-  } catch (error) { res.status(500).json({ message: error.message }); }
+    const response = await axios.get(`${ID_SYSTEM_API}?action=get_all_students`, {
+      headers: { 'X-API-KEY': API_KEY }
+    });
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching student list.' });
+  }
 });
 
+// Manual Dues Update
 router.put('/students/:id/dues', async (req, res) => {
-  const { status } = req.body; // 'Paid' or 'Pending'
+  const { status } = req.body;
   try {
-    await db.query('UPDATE students SET dues_status = ? WHERE id = ?', [status, req.params.id]);
-    res.json({ message: 'Student dues status updated!' });
-  } catch (error) { res.status(500).json({ message: error.message }); }
+    const response = await axios.post(`${ID_SYSTEM_API}?action=update_dues_status`, {
+      id: req.params.id,
+      status
+    }, {
+      headers: { 'X-API-KEY': API_KEY }
+    });
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating dues status.' });
+  }
 });
 
-// --- PAYMENT TRACKING ---
+// Get All Payments (Global Tracking)
 router.get('/payments', async (req, res) => {
   try {
-    const [rows] = await db.query(`
-      SELECT p.*, s.full_name, s.matric_number 
-      FROM payments p 
-      JOIN students s ON p.student_id = s.id 
-      ORDER BY p.created_at DESC
-    `);
-    res.json(rows);
-  } catch (error) { res.status(500).json({ message: error.message }); }
+    const response = await axios.get(`${ID_SYSTEM_API}?action=get_all_payments`, {
+      headers: { 'X-API-KEY': API_KEY }
+    });
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching global payment history.' });
+  }
 });
 
-// --- EXISTING CONTENT ROUTES ---
-// ... existing post/delete routes for executives, events, blogs ...
+// Manage Contact Messages (If handled by central system)
+router.get('/messages', async (req, res) => {
+  try {
+    const response = await axios.get(`${ID_SYSTEM_API}?action=get_messages`, {
+      headers: { 'X-API-KEY': API_KEY }
+    });
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching contact messages.' });
+  }
+});
 
 export default router;
