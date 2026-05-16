@@ -82,20 +82,16 @@ router.post('/login', async (req, res) => {
 
 import nodemailer from 'nodemailer';
 
-// Configure Nodemailer with timeouts and automatic SSL/TLS detection
-const smtpPort = parseInt(process.env.SMTP_PORT || '587');
+// Configure Nodemailer using the built-in 'gmail' service for maximum cloud compatibility
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: smtpPort,
-  secure: smtpPort === 465, // true for 465, false for others
+  service: 'gmail',
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
   tls: {
-    rejectUnauthorized: false, // Helps with some shared hosting providers
+    rejectUnauthorized: false,
   },
-  family: 4, // Force IPv4 to avoid ENETUNREACH errors on IPv6
   connectionTimeout: 15000,
   greetingTimeout: 15000,
   socketTimeout: 20000,
