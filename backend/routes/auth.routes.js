@@ -82,18 +82,22 @@ router.post('/login', async (req, res) => {
 
 import nodemailer from 'nodemailer';
 
-// Configure Nodemailer with timeouts
+// Configure Nodemailer with timeouts and automatic SSL/TLS detection
+const smtpPort = parseInt(process.env.SMTP_PORT || '587');
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false, 
+  port: smtpPort,
+  secure: smtpPort === 465, // true for 465, false for others
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
-  connectionTimeout: 10000, // 10 seconds
-  greetingTimeout: 10000,   // 10 seconds
-  socketTimeout: 15000,     // 15 seconds
+  tls: {
+    rejectUnauthorized: false, // Helps with some shared hosting providers
+  },
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 15000,
 });
 
 // Forgot Password Proxy

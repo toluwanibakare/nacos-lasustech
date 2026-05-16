@@ -20,6 +20,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust the Render proxy to allow express-rate-limit to see the real user IP
+app.set('trust proxy', 1);
+
 /**
  * SECURITY RATE LIMITING
  * ---------------------------------------------------------
