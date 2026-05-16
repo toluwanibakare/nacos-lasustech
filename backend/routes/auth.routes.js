@@ -95,9 +95,10 @@ const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false, // Helps with some shared hosting providers
   },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 15000,
+  family: 4, // Force IPv4 to avoid ENETUNREACH errors on IPv6
+  connectionTimeout: 15000,
+  greetingTimeout: 15000,
+  socketTimeout: 20000,
 });
 
 // Forgot Password Proxy
