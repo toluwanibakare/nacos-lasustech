@@ -82,33 +82,41 @@ router.post('/login', async (req, res) => {
 
 import nodemailer from 'nodemailer';
 
-// Configure Nodemailer
+// Configure Nodemailer with timeouts
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false, // true for 465, false for other ports
+  secure: false, 
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  connectionTimeout: 10000, // 10 seconds
+  greetingTimeout: 10000,   // 10 seconds
+  socketTimeout: 15000,     // 15 seconds
 });
 
 // Forgot Password Proxy
 router.post('/forgot-password', async (req, res) => {
   const { matric_number, email: providedEmail } = req.body;
+  console.log(`🔑 Password reset requested for: ${matric_number}`);
 
   try {
+    // 1. Request OTP from central system with timeout
     const response = await axios.post(`${ID_SYSTEM_API}?action=request_otp`, {
       matric_number,
       email: providedEmail
     }, {
-      headers: { 'X-API-KEY': API_KEY }
+      headers: { 'X-API-KEY': API_KEY },
+      timeout: 15000 // 15 seconds
     });
 
     const { status, email, otp, error } = response.data;
+    console.log(`📡 Central system response: ${status}`);
 
     if (status === 'success' && otp) {
-      // Send the email
+      console.log(`📧 Attempting to send OTP to: ${email}`);
+      
       const mailOptions = {
         from: `"NACOS LASUSTECH" <${process.env.SMTP_USER}>`,
         to: email,
@@ -128,12 +136,23 @@ router.post('/forgot-password', async (req, res) => {
         `,
       };
 
-      await transporter.sendMail(mailOptions);
-      res.json({ status: 'success', message: 'OTP sent successfully to your registered email.' });
+      try {
+        await transporter.sendMail(mailOptions);
+        console.log(`✅ OTP Email sent successfully to ${email}`);
+        res.json({ status: 'success', message: 'OTP sent successfully to your registered email.' });
+      } catch (mailError) {
+        console.error('❌ SMTP Error:', mailError.message);
+        res.status(500).json({ 
+          message: 'Error sending verification email. Our mail server might be down.',
+          details: mailError.message 
+        });
+      }
     } else {
+      console.log(`⚠️ OTP Request Failed: ${error}`);
       res.status(400).json({ message: error || 'Verification failed.' });
     }
   } catch (error) {
+    console.error('❌ Forgot Password Error:', error.message);
     const status = error.response?.status || 500;
     const message = error.response?.data?.error || error.response?.data?.message || 'Error processing password reset.';
     res.status(status).json({ message });
