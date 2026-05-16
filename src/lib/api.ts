@@ -1,7 +1,4 @@
-const rawApiUrl = import.meta.env.VITE_API_URL;
-export const API_BASE_URL = (rawApiUrl && rawApiUrl !== "undefined" && rawApiUrl !== "") 
-  ? rawApiUrl 
-  : 'https://api.nacos.tmb.it.com/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
   const token = localStorage.getItem('token');
