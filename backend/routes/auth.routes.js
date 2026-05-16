@@ -82,9 +82,11 @@ router.post('/login', async (req, res) => {
 
 import nodemailer from 'nodemailer';
 
-// Configure Nodemailer using the built-in 'gmail' service for maximum cloud compatibility
+// Configure Nodemailer with strict IPv4 to bypass Render's IPv6 routing issues
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
@@ -92,6 +94,7 @@ const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false,
   },
+  family: 4, // THIS is critical to stop ENETUNREACH on IPv6
   connectionTimeout: 15000,
   greetingTimeout: 15000,
   socketTimeout: 20000,
