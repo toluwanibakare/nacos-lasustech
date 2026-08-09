@@ -12,7 +12,10 @@ import Constitution from "./pages/Constitution.tsx";
 import EventGallery from "./pages/EventGallery.tsx";
 import AdminPortal from "./pages/AdminPortal.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import Donate from "./pages/Donate.tsx";
 import ScrollToTop from "./components/ScrollToTop";
+
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -27,9 +30,14 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/executives" element={<Executives />} />
           <Route path="/events" element={<Events />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard" element={
+            <ErrorBoundary>
+              <Dashboard />
+            </ErrorBoundary>
+          } />
           <Route path="/admin" element={<AdminPortal />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/donate" element={<Donate />} />
           <Route path="/constitution" element={<Constitution />} />
           <Route path="/events/:id/gallery" element={<EventGallery />} />
           <Route path="*" element={<NotFound />} />
