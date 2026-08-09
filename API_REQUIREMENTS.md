@@ -7,6 +7,10 @@ This document outlines the required API endpoints and data payloads for the stud
 > [!NOTE]
 > Most link values (URLs) in these payloads are placeholders and will be updated as the production environment is finalized.
 
+### External Integration Constants
+- **BASE_URL**: `https://nacosid.tmb.it.com`
+- **API_KEY**: `NACOS_LASUSTECH_SECURE_API_KEY` (Used for backend-to-backend communication)
+
 ---
 
 ## 1. Authentication & Security
@@ -26,9 +30,11 @@ This document outlines the required API endpoints and data payloads for the stud
   "token": "jwt_token_here",
   "user": {
     "id": 1,
-    "name": "John Doe",
-    "matric_number": "230303010052",
-    "level": "400L",
+    "full_name": "JOHN DOE",
+    "matric_no": "230303010052",
+    "level": "400",
+    "is_generated": true,
+    "image_url": "https://nacosid.tmb.it.com/uploads/230303010052_1714500000.jpg",
     "role": "student"
   }
 }
@@ -43,14 +49,20 @@ This document outlines the required API endpoints and data payloads for the stud
 - **Response**:
 ```json
 {
-  "full_name": "Toluwani Moses",
-  "level": "400L",
-  "dues_status": "Paid",
-  "id_card_status": "Ready",
-  "wallet_balance": 500.00,
-  "recent_activities": [
-    { "type": "payment", "amount": 2000, "date": "2026-04-10" }
-  ]
+  "status": "success",
+  "data": {
+    "id": 1,
+    "full_name": "JOHN DOE",
+    "matric_no": "230303010052",
+    "level": "400",
+    "is_generated": true,
+    "image_url": "https://nacosid.tmb.it.com/uploads/230303010052_1714500000.jpg",
+    "dues_status": "Paid",
+    "wallet_balance": 500.00,
+    "recent_activities": [
+      { "type": "payment", "amount": 2000, "date": "2026-04-10" }
+    ]
+  }
 }
 ```
 
@@ -90,6 +102,24 @@ This document outlines the required API endpoints and data payloads for the stud
   "blood_group": "O+",
   "birthday": "2004-05-15", // Note: This should connect to NACOS Google Calendar
   "emergency_contact": "08012345678"
+}
+```
+
+### **GET** `/services/id-card/status` (Proxy to External API)
+**Purpose**: Fetch verified ID card details from `nacosid.tmb.it.com`.
+- **Headers**: `Authorization: Bearer <token>`
+- **Response**:
+```json
+{
+  "status": "success",
+  "data": {
+    "id": 1,
+    "full_name": "JOHN DOE",
+    "matric_no": "230303010052",
+    "level": "400",
+    "is_generated": true,
+    "image_url": "https://nacosid.tmb.it.com/uploads/230303010052_1714500000.jpg"
+  }
 }
 ```
 

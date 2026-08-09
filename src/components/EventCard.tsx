@@ -24,6 +24,7 @@ const EventCard = ({ title, date, description, image, featured, onClick, ongoing
               src={image} 
               alt={title} 
               loading="lazy" 
+              decoding="async"
               className={`h-full w-full transition-transform duration-500 group-hover:scale-[1.03] ${contain ? "object-contain" : "object-cover"}`} 
             />
           </div>
@@ -64,6 +65,7 @@ const EventCard = ({ title, date, description, image, featured, onClick, ongoing
           src={image} 
           alt={title} 
           loading="lazy" 
+          decoding="async"
           className={`h-full w-full transition-transform duration-500 group-hover:scale-[1.03] ${contain ? "object-contain" : "object-cover"}`} 
         />
         {ongoing && (

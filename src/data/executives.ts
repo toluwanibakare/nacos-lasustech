@@ -17,6 +17,7 @@ import asshoc100Img from "@/assets/asshoc_100.jpeg";
 import hoc300Img from "@/assets/hoc_300.jpg";
 import assGensecImg from "@/assets/ass_gensec.jpg";
 import finsecImg from "@/assets/finsec.jpg";
+import dirStudiesImg from "@/assets/dir_studies.JPG";
 
 export interface Executive {
   name: string;
@@ -37,7 +38,7 @@ export const executives: Executive[] = [
     objectPosition: "object-top",
   },
   {
-    name: "Bakare Toluwani Moses",
+    name: "Toluwani Moses Bakare",
     post: "Vice President",
     level: "300 Level",
     description: "Acts as the chief assistant to the President, coordinating administrative programs and ensuring organizational stability.",
@@ -98,6 +99,13 @@ export const executives: Executive[] = [
     level: "200 Level",
     description: "Coordinates athletic events and fitness programs to promote physical well-being and department-wide team spirit.",
     image: sportsDirectorImg,
+  },
+  {
+    name: "Akinrinade Moses Imisioluwa",
+    post: "Director of Studies",
+    level: "",
+    description: "Oversees the department's academic programs, curriculum and student's academic progress.",
+    image: dirStudiesImg,
   },
   {
     name: "Oluwatobi Oluwaseyi Isaac",

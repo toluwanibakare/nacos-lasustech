@@ -3,24 +3,71 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NACOS LASUSTECH | Official Hub</title>
+    <title>NACOS LASUSTECH | Official Website</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <meta name="description" content="Official digital home for the Nigeria Association of Computing Students (NACOS), LASUSTECH Chapter. Empowering future tech leaders through innovation and community." />
     <meta name="author" content="NACOS LASUSTECH Chapter" />
 
-    <meta property="og:title" content="NACOS LASUSTECH Hub" />
+    <meta property="og:title" content="NACOS LASUSTECH Website" />
     <meta property="og:description" content="The official platform for computing students at LASUSTECH. Access resources, pay dues, and join our tech community." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/og-image.png" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@nacoslasustech" />
-    <meta name="twitter:title" content="NACOS LASUSTECH Hub" />
+    <meta name="twitter:title" content="NACOS LASUSTECH Website" />
     <meta name="twitter:description" content="Empowering the next generation of computing leaders at LASUSTECH." />
     <meta name="twitter:image" content="/og-image.png" />
   </head>
 
   <body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" style="position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#ffffff;transition:opacity 0.5s ease">
+      <div style="position:relative;width:80px;height:80px;transform-style:preserve-3d;animation:flip-horizontal 2.5s infinite linear">
+        <!-- Front -->
+        <div style="position:absolute;inset:0;backface-visibility:hidden;display:flex;align-items:center;justify-content:center;border-radius:50%;border:3px solid rgba(31,95,175,0.3);background:linear-gradient(to bottom right, rgba(31,95,175,0.1), transparent);box-shadow:0 10px 25px rgba(0,0,0,0.1)">
+          <img src="/src/assets/nacos_logo.png" alt="" style="width:50px;height:50px;object-fit:contain" />
+        </div>
+        <!-- Back -->
+        <div style="position:absolute;inset:0;backface-visibility:hidden;transform:rotateY(180deg);display:flex;align-items:center;justify-content:center;border-radius:50%;border:3px solid rgba(31,95,175,0.3);background:linear-gradient(to bottom right, rgba(31,95,175,0.1), transparent);box-shadow:0 10px 25px rgba(0,0,0,0.1)">
+          <img src="/src/assets/lasustech_logo.png" alt="" style="width:50px;height:50px;object-fit:contain" />
+        </div>
+      </div>
+      <p style="margin-top:24px;color:rgba(8,17,29,0.7);font-size:12px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;font-family:system-ui,sans-serif">NACOS LASUSTECH</p>
+      <style>
+        @keyframes flip-horizontal {
+          0% { transform: rotateY(0deg); }
+          100% { transform: rotateY(360deg); }
+        }
+      </style>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Wait for React to mount AND wait at least 3 seconds
+      const startTime = Date.now();
+      const hideLoader = () => {
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, 3000 - elapsed);
+        setTimeout(() => {
+          const loader = document.getElementById('loading-screen');
+          if (loader) {
+            loader.style.opacity = '0';
+            setTimeout(() => loader.remove(), 500);
+          }
+        }, remaining);
+      };
+
+      const observer = new MutationObserver(() => {
+        const root = document.getElementById('root');
+        if (root && root.children.length > 0) {
+          hideLoader();
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.getElementById('root'), { childList: true });
+      // Fallback: remove loader after 8 seconds
+      setTimeout(hideLoader, 8000);
+    </script>
   </body>
 </html>

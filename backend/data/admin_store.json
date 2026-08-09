@@ -1,0 +1,254 @@
+{
+  "academicSettings": {
+    "session": "2025/2026",
+    "semester": "Second Semester"
+  },
+  "executives": [
+    {
+      "id": "exec-1",
+      "name": "Shofunde Jubril Ajibola",
+      "post": "President",
+      "level": "400 Level",
+      "description": "Serves as the primary leader and official representative of the NACOS LASUSTECH Chapter, overseeing all activities and strategic growth.",
+      "image_url": "uploads/president.jpg",
+      "sort_order": 1,
+      "is_active": 1
+    },
+    {
+      "id": "exec-2",
+      "name": "Bakare Toluwani Moses",
+      "post": "Vice President",
+      "level": "300 Level",
+      "description": "Acts as the chief assistant to the President, coordinating administrative programs and ensuring organizational stability.",
+      "image_url": "uploads/vice_president.jpg",
+      "sort_order": 2,
+      "is_active": 1
+    },
+    {
+      "id": "exec-3",
+      "name": "Owolabi Grace Oluwafunmilayo",
+      "post": "Lady Vice-President",
+      "level": "200 Level",
+      "description": "Focuses on the empowerment and representation of female students within the computing community and supporting top-level initiatives.",
+      "image_url": "uploads/lady_vice.jpeg",
+      "sort_order": 3,
+      "is_active": 1
+    },
+    {
+      "id": "exec-4",
+      "name": "Oladepo Damilare David",
+      "post": "General Secretary",
+      "level": "300 Level",
+      "description": "The custodian of chapter records, responsible for official documentation, correspondence, and meeting coordination.",
+      "image_url": "uploads/gensec.jpeg",
+      "sort_order": 4,
+      "is_active": 1
+    },
+    {
+      "id": "exec-5",
+      "name": "Emmanuel Ariyo Ogunfunwa",
+      "post": "Assistant General Secretary",
+      "level": "200 Level",
+      "description": "Supports the General Secretary in administrative duties and ensures continuous documentation of chapter affairs.",
+      "image_url": "uploads/ass_gensec.jpg",
+      "sort_order": 5,
+      "is_active": 1
+    },
+    {
+      "id": "exec-6",
+      "name": "Onaade Abdulmuqtadir Ayomide",
+      "post": "Financial Secretary",
+      "level": "300 Level",
+      "description": "Maintains accurate financial records, manages budget allocations, and ensures financial transparency across all chapter projects.",
+      "image_url": "uploads/finsec.jpg",
+      "sort_order": 6,
+      "is_active": 1
+    },
+    {
+      "id": "exec-7",
+      "name": "Ebhojie Oluwadamilola",
+      "post": "Treasurer",
+      "level": "300 Level",
+      "description": "Oversees the chapter's treasury, managing funds, ensuring secure disbursements, and providing detailed financial reports.",
+      "image_url": "uploads/treasurer.jpeg",
+      "sort_order": 7,
+      "is_active": 1
+    },
+    {
+      "id": "exec-8",
+      "name": "Aladekoye Samuel",
+      "post": "Public Relations Officer",
+      "level": "100 Level",
+      "description": "The official spokesperson for the chapter, managing media relations, brand image, and external communications.",
+      "image_url": "uploads/pro.jpg",
+      "sort_order": 8,
+      "is_active": 1
+    },
+    {
+      "id": "exec-9",
+      "name": "Fatai Adewale",
+      "post": "Social Director",
+      "level": "300 Level",
+      "description": "Organizes social events, workshops, and recreational activities to foster a strong sense of community and networking.",
+      "image_url": "uploads/social_director.png",
+      "sort_order": 9,
+      "is_active": 1
+    },
+    {
+      "id": "exec-10",
+      "name": "Egba Uthman Temitayo",
+      "post": "Sport Director",
+      "level": "200 Level",
+      "description": "Coordinates athletic events and fitness programs to promote physical well-being and department-wide team spirit.",
+      "image_url": "uploads/sports.jpg",
+      "sort_order": 10,
+      "is_active": 1
+    },
+    {
+      "id": "exec-11",
+      "name": "Oluwatobi Oluwaseyi Isaac",
+      "post": "Welfare Director",
+      "level": "400 Level",
+      "description": "Monitors and ensures the general well-being and support of all computing students within the chapter.",
+      "image_url": "uploads/welfare.jpeg",
+      "sort_order": 11,
+      "is_active": 1
+    },
+    {
+      "id": "exec-12",
+      "name": "Olagunju Basheer Olaniyi",
+      "post": "Electoral Chairman / HOC 400L",
+      "level": "400 Level",
+      "description": "Leads the senior class and oversees the integrity and execution of the chapter's electoral processes.",
+      "image_url": "uploads/hoc_400.jpg",
+      "sort_order": 12,
+      "is_active": 1
+    },
+    {
+      "id": "exec-13",
+      "name": "Adegoke Muhammed",
+      "post": "HOC for 300 level",
+      "level": "300 Level",
+      "description": "Serves as the primary link between the 300 level students and the executive council, managing class-specific affairs.",
+      "image_url": "uploads/hoc_300.jpg",
+      "sort_order": 13,
+      "is_active": 1
+    },
+    {
+      "id": "exec-14",
+      "name": "Osho Aishat",
+      "post": "HOC for 200 level",
+      "level": "200 Level",
+      "description": "Coordinates academic and social activities for the 200 level class, ensuring their voices are heard in the chapter.",
+      "image_url": "uploads/hoc_200.jpg",
+      "sort_order": 14,
+      "is_active": 1
+    },
+    {
+      "id": "exec-15",
+      "name": "Ayara Michael",
+      "post": "HOC for 100 level",
+      "level": "100 Level",
+      "description": "Guides and represents the path of year-one students, helping them integrate into the NACOS community.",
+      "image_url": "uploads/hoc_100.jpeg",
+      "sort_order": 15,
+      "is_active": 1
+    },
+    {
+      "id": "exec-16",
+      "name": "Adebisi Emmanuel Oluwatobi",
+      "post": "Assistant HOC for 400L",
+      "level": "400 Level",
+      "description": "Assists the 400L HOC in class management and leadership duties for the graduating class.",
+      "image_url": "uploads/asshoc_400.jpg",
+      "sort_order": 16,
+      "is_active": 1
+    },
+    {
+      "id": "exec-17",
+      "name": "Matti Jadesola",
+      "post": "Assistant HOC for 300level",
+      "level": "300 Level",
+      "description": "Provides administrative support to the 300L HOC and class activities.",
+      "image_url": "uploads/asshoc_300.jpeg",
+      "sort_order": 17,
+      "is_active": 1
+    },
+    {
+      "id": "exec-18",
+      "name": "Samuel John",
+      "post": "Assistant HOC for 200L",
+      "level": "200 Level",
+      "description": "Supports class coordination and member welfare for the 200 level students.",
+      "image_url": "uploads/asshoc_200.jpg",
+      "sort_order": 18,
+      "is_active": 1
+    },
+    {
+      "id": "exec-19",
+      "name": "Olatunji Oyindamola Barakat",
+      "post": "Assistant HOC 100lvl",
+      "level": "100 Level",
+      "description": "Assists the 100L HOC in welcoming and organizing the newest members of the chapter.",
+      "image_url": "uploads/asshoc_100.jpeg",
+      "sort_order": 19,
+      "is_active": 1
+    }
+  ],
+  "events": [
+    {
+      "id": "hod-cup-finale",
+      "title": "HOD'S CUP: THE GRAND FINALE",
+      "event_status": "past",
+      "start_date": "2026-05-07T12:00",
+      "end_date": "2026-05-07T15:00",
+      "location": "LASUSTECH Main Field",
+      "description": "The ultimate glory awaits! Join us for the 3rd Place Match (100L vs 200L) at 12:00 NOON and the Final Match (300L vs 400L) at 1:30 PM. Venue: LASUSTECH Main Field.",
+      "cover_image_url": "uploads/final_fixture.jpg",
+      "sort_order": 1,
+      "is_active": 1,
+      "gallery": []
+    },
+    {
+      "id": "ladies-in-tech",
+      "title": "LADIES IN TECH EVENT",
+      "event_status": "past",
+      "start_date": "2026-05-01T20:00",
+      "end_date": "2026-05-01T22:00",
+      "location": "Google Meet",
+      "description": "Theme: Overcoming fear and imposter syndrome. Featuring guest speakers Agape Oluwa, Mujisatullahi Bakare, and Naheemat Akinyemi A. Hosted by Owolabi Grace (Lady Vice). Join us on Google Meet at 8:00 PM. Contact the PRO (+234 810 563 8170) for more info.",
+      "cover_image_url": "uploads/PHOTO-2026-04-29-09-06-01.jpg",
+      "sort_order": 2,
+      "is_active": 1,
+      "gallery": []
+    },
+    {
+      "id": "hod-cup",
+      "title": "HOD'S CUP 2025/2026",
+      "event_status": "past",
+      "start_date": "2026-04-22T08:00",
+      "end_date": "2026-05-07T18:00",
+      "location": "LASUSTECH",
+      "description": "The annual HOD'S CUP featuring Football, Chess, and Scrabble. A month of intense competition where the department's best athletes battled for glory.",
+      "cover_image_url": "uploads/PHOTO-2026-04-24-17-16-18.jpg",
+      "sort_order": 3,
+      "is_active": 1,
+      "gallery": []
+    },
+    {
+      "id": "bootcamp-onboarding",
+      "title": "NACOS Tech Upscaling Bootcamp Onboarding",
+      "event_status": "past",
+      "start_date": "2026-04-29T10:00",
+      "end_date": "2026-04-29T12:00",
+      "location": "LASUSTECH",
+      "description": "The official onboarding session for the NACOS Upscaling Bootcamp, introducing students to advanced computing tracks and industry mentorship.",
+      "cover_image_url": "uploads/PHOTO-2026-04-28-12-14-22.jpg",
+      "sort_order": 4,
+      "is_active": 1,
+      "gallery": []
+    }
+  ],
+  "blogs": [],
+  "studentFlags": []
+}

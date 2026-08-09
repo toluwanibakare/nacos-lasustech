@@ -1,0 +1,15 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  
+  # Rewrite nominee profile links to share.php to dynamically inject OG tags into index.html
+  RewriteRule ^voting/([^/]+)/([^/]+)/?$ share.php?category=$1&id=$2 [L,QSA]
+  
+  # If the requested file or directory exists, serve it directly
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+  
+  # Otherwise, route all other requests to index.html
+  RewriteRule ^ index.html [L]
+</IfModule>

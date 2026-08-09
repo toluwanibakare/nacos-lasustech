@@ -15,6 +15,7 @@ const ExecutiveCard = ({ name, post, level, description, image, objectPosition =
           src={image}
           alt={name}
           loading="lazy"
+          decoding="async"
           className={`h-full w-full object-cover ${objectPosition} transition-transform duration-500 group-hover:scale-[1.03]`}
         />
       </div>

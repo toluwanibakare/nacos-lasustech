@@ -9,6 +9,8 @@ const BlogCard = ({ title, excerpt, author, date, category, image }: BlogPost) =
         <img
           src={image}
           alt={title}
+          loading="lazy"
+          decoding="async"
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div className="absolute left-4 top-4 rounded-full bg-primary/90 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">

@@ -1,0 +1,84 @@
+CREATE TABLE IF NOT EXISTS site_settings (
+  setting_key VARCHAR(120) PRIMARY KEY,
+  setting_value TEXT NOT NULL,
+  setting_group VARCHAR(80) NOT NULL DEFAULT 'general',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS student_flags (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  matric_number VARCHAR(120) NOT NULL,
+  student_name VARCHAR(180) NULL,
+  reason VARCHAR(180) NOT NULL,
+  message TEXT NOT NULL,
+  status ENUM('active', 'resolved') NOT NULL DEFAULT 'active',
+  flagged_by VARCHAR(160) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_student_flag_active (matric_number, status)
+);
+
+CREATE TABLE IF NOT EXISTS executives (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(180) NOT NULL,
+  post VARCHAR(180) NOT NULL,
+  level VARCHAR(120) NOT NULL,
+  description TEXT NOT NULL,
+  image_url VARCHAR(255) NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS events (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  slug VARCHAR(180) NOT NULL UNIQUE,
+  title VARCHAR(220) NOT NULL,
+  event_status ENUM('upcoming', 'current', 'past') NOT NULL DEFAULT 'upcoming',
+  start_date DATETIME NULL,
+  end_date DATETIME NULL,
+  location VARCHAR(220) NULL,
+  description TEXT NOT NULL,
+  cover_image_url VARCHAR(255) NULL,
+  registration_url VARCHAR(255) NULL,
+  flyer_folder VARCHAR(180) NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS event_gallery_images (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  event_id INT UNSIGNED NOT NULL,
+  image_url VARCHAR(255) NOT NULL,
+  caption VARCHAR(255) NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_event_gallery_event_id (event_id)
+);
+
+CREATE TABLE IF NOT EXISTS blogs (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  slug VARCHAR(180) NOT NULL UNIQUE,
+  title VARCHAR(220) NOT NULL,
+  excerpt TEXT NOT NULL,
+  content LONGTEXT NOT NULL,
+  author VARCHAR(180) NOT NULL,
+  category VARCHAR(120) NULL,
+  image_url VARCHAR(255) NULL,
+  is_published TINYINT(1) NOT NULL DEFAULT 1,
+  published_at DATETIME NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO site_settings (setting_key, setting_value, setting_group)
+VALUES
+  ('current_session', '2025/2026', 'academic'),
+  ('current_semester', 'First Semester', 'academic')
+ON DUPLICATE KEY UPDATE
+  setting_value = VALUES(setting_value),
+  setting_group = VALUES(setting_group);

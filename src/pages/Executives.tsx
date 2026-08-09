@@ -5,9 +5,10 @@ import { executives } from "@/data/executives";
 
 const Executives = () => {
   const topLeaders = executives.slice(0, 3);
-  const coreExcos = executives.slice(3, 11);
-  const hocs = executives.slice(11, 15);
-  const asstHocs = executives.slice(15);
+  const coreExcosRow1 = executives.slice(3, 7);
+  const coreExcosRow2 = executives.slice(7, 12);
+  const hocs = executives.slice(12, 16);
+  const asstHocs = executives.slice(16);
 
   return (
     <Layout>
@@ -40,10 +41,19 @@ const Executives = () => {
           {/* Core Executives */}
           <div>
             <h2 className="mb-8 text-center text-xl font-bold uppercase tracking-tight text-muted-foreground/50">Core Executives</h2>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {coreExcos.map((exec) => (
-                <ExecutiveCard key={exec.post} {...exec} />
-              ))}
+            <div className="space-y-6">
+              <div className="flex justify-center">
+                <div className="grid gap-6 w-full max-w-5xl sm:grid-cols-2 lg:grid-cols-4">
+                  {coreExcosRow1.map((exec) => (
+                    <ExecutiveCard key={exec.post} {...exec} />
+                  ))}
+                </div>
+              </div>
+              <div className="grid gap-6 w-full sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+                {coreExcosRow2.map((exec) => (
+                  <ExecutiveCard key={exec.post} {...exec} />
+                ))}
+              </div>
             </div>
           </div>
 

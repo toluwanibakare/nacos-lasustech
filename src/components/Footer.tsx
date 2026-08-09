@@ -30,6 +30,7 @@ const quickLinks = [
   { label: "Home", path: "/" },
   { label: "Executives", path: "/executives" },
   { label: "Events", path: "/events" },
+  { label: "Donate", path: "/donate" },
   { label: "Contact Us", path: "/contact" },
 ];
 
@@ -71,12 +72,12 @@ const Footer = () => {
                 target="_blank" 
                 rel="noopener noreferrer"
                 title="NACOS NATIONAL"
-                className="transition-opacity hover:opacity-80"
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-white p-1 border border-white/20 transition-all hover:opacity-90 hover:scale-105 shadow-md shrink-0"
               >
                 <img
                   src={nacosLogo}
                   alt="NACOS NATIONAL"
-                  className="h-12 w-auto object-contain"
+                  className="h-full w-auto object-contain"
                 />
               </a>
 
@@ -85,20 +86,20 @@ const Footer = () => {
                 target="_blank" 
                 rel="noopener noreferrer"
                 title="LASUSTECH"
-                className="transition-opacity hover:opacity-80"
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-white p-1 border border-white/20 transition-all hover:opacity-90 hover:scale-105 shadow-md shrink-0"
               >
                 <img
                   src={lasustechLogo}
                   alt="LASUSTECH"
-                  className="h-11 w-auto object-contain"
+                  className="h-full w-auto object-contain"
                 />
               </a>
 
               <Link to="/" className="ml-1 hidden flex-col leading-tight sm:flex cursor-pointer">
-                <span className="font-display text-white font-bold tracking-tight text-foreground">
+                <span className="font-display text-white font-bold tracking-tight text-foreground whitespace-nowrap">
                   NACOS LASUSTECH
                 </span>
-                <span className="text-[11px] font-medium text-muted-foreground">
+                <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">
                   Chapter
                 </span>
               </Link>
@@ -262,7 +263,7 @@ const Footer = () => {
                 <a href="#" className="hover:text-white transition-colors underline underline-offset-4">Muqtech</a>,
                 <a href="#" className="hover:text-white transition-colors underline underline-offset-4">DevMoh</a>,
                 <a href="https://makinde-portfolio.vercel.app" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors underline underline-offset-4">Polytencode</a>,
-                & <a href="#" className="hover:text-white transition-colors underline underline-offset-4">C'est BroCode</a>
+                & <a href="https://devola.xyz" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors underline underline-offset-4">Olamzyweb</a>
               </span>
             </p>
             <p className="hidden md:block opacity-10">|</p>

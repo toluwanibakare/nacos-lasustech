@@ -17,7 +17,7 @@ const protect = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'nacos_secret_2025');
     req.user = decoded; // Attach user info to the request
     next();
   } catch (error) {
