@@ -19,7 +19,7 @@ import nacosDay10 from "@/assets/Events/nacos-day/Nacos 2026-36.jpg";
 import nacosDay11 from "@/assets/Events/nacos-day/Nacos 2026-48.jpg";
 import nacosDay12 from "@/assets/Events/nacos-day/Nacos 2026-53.jpg";
 
-// HOD Cup Images (Certificates first, then match/event photos)
+// HOD Cup Images
 import hodCert1 from "@/assets/Events/hod-cup/1st_cert.jpeg";
 import hodCert2 from "@/assets/Events/hod-cup/2nd_cert.jpeg";
 import hodCert3 from "@/assets/Events/hod-cup/3rd_cert.jpeg";
@@ -45,10 +45,10 @@ import bootcamp8 from "@/assets/Events/bootcamp_onboarding/PHOTO-2026-04-29-19-3
 import bootcamp9 from "@/assets/Events/bootcamp_onboarding/PHOTO-2026-04-29-19-36-11.jpg";
 import bootcamp10 from "@/assets/Events/bootcamp_onboarding/PHOTO-2026-04-29-19-36-11(1).jpg";
 
-// NCC Visit Images
-import ncc1 from "@/assets/Events/ncc-visit/IMG-16.jpg";
-import ncc2 from "@/assets/Events/ncc-visit/IMG-21.jpg";
-import ncc3 from "@/assets/Events/ncc-visit/IMG-3.jpg";
+// NCC Visit Images (ALL 27 Photos)
+import ncc1 from "@/assets/Events/ncc-visit/IMG-3.jpg";
+import ncc2 from "@/assets/Events/ncc-visit/IMG-16.jpg";
+import ncc3 from "@/assets/Events/ncc-visit/IMG-21.jpg";
 import ncc4 from "@/assets/Events/ncc-visit/IMG-43.jpg";
 import ncc5 from "@/assets/Events/ncc-visit/IMG-53.jpg";
 import ncc6 from "@/assets/Events/ncc-visit/IMG-65.jpg";
@@ -58,6 +58,21 @@ import ncc9 from "@/assets/Events/ncc-visit/IMG-98.jpg";
 import ncc10 from "@/assets/Events/ncc-visit/IMG-100.jpg";
 import ncc11 from "@/assets/Events/ncc-visit/IMG-102.jpg";
 import ncc12 from "@/assets/Events/ncc-visit/IMG-112.jpg";
+import ncc13 from "@/assets/Events/ncc-visit/IMG-114.jpg";
+import ncc14 from "@/assets/Events/ncc-visit/IMG-117.jpg";
+import ncc15 from "@/assets/Events/ncc-visit/IMG-118.jpg";
+import ncc16 from "@/assets/Events/ncc-visit/IMG-119.jpg";
+import ncc17 from "@/assets/Events/ncc-visit/IMG-120.jpg";
+import ncc18 from "@/assets/Events/ncc-visit/IMG-121.jpg";
+import ncc19 from "@/assets/Events/ncc-visit/IMG-122.jpg";
+import ncc20 from "@/assets/Events/ncc-visit/IMG-123.jpg";
+import ncc21 from "@/assets/Events/ncc-visit/IMG-124.jpg";
+import ncc22 from "@/assets/Events/ncc-visit/IMG-125.jpg";
+import ncc23 from "@/assets/Events/ncc-visit/IMG-126.jpg";
+import ncc24 from "@/assets/Events/ncc-visit/IMG-127.jpg";
+import ncc25 from "@/assets/Events/ncc-visit/IMG-128.jpg";
+import ncc26 from "@/assets/Events/ncc-visit/IMG-129.jpg";
+import ncc27 from "@/assets/Events/ncc-visit/IMG-130.jpg";
 
 export interface GalleryImage {
   src: string;
@@ -83,18 +98,33 @@ export const eventGalleries: Record<string, GallerySection> = {
     dateSortValue: "2026-08-04",
     eventTag: "NCC Visit",
     images: [
-      { src: ncc1, alt: "NCC Visit 1" },
-      { src: ncc2, alt: "NCC Visit 2" },
-      { src: ncc3, alt: "NCC Visit 3" },
-      { src: ncc4, alt: "NCC Visit 4" },
-      { src: ncc5, alt: "NCC Visit 5" },
-      { src: ncc6, alt: "NCC Visit 6" },
-      { src: ncc7, alt: "NCC Visit 7" },
-      { src: ncc8, alt: "NCC Visit 8" },
-      { src: ncc9, alt: "NCC Visit 9" },
-      { src: ncc10, alt: "NCC Visit 10" },
-      { src: ncc11, alt: "NCC Visit 11" },
-      { src: ncc12, alt: "NCC Visit 12" },
+      { src: ncc1, alt: "NCC Visit Photo 1" },
+      { src: ncc2, alt: "NCC Visit Photo 2" },
+      { src: ncc3, alt: "NCC Visit Photo 3" },
+      { src: ncc4, alt: "NCC Visit Photo 4" },
+      { src: ncc5, alt: "NCC Visit Photo 5" },
+      { src: ncc6, alt: "NCC Visit Photo 6" },
+      { src: ncc7, alt: "NCC Visit Photo 7" },
+      { src: ncc8, alt: "NCC Visit Photo 8" },
+      { src: ncc9, alt: "NCC Visit Photo 9" },
+      { src: ncc10, alt: "NCC Visit Photo 10" },
+      { src: ncc11, alt: "NCC Visit Photo 11" },
+      { src: ncc12, alt: "NCC Visit Photo 12" },
+      { src: ncc13, alt: "NCC Visit Photo 13" },
+      { src: ncc14, alt: "NCC Visit Photo 14" },
+      { src: ncc15, alt: "NCC Visit Photo 15" },
+      { src: ncc16, alt: "NCC Visit Photo 16" },
+      { src: ncc17, alt: "NCC Visit Photo 17" },
+      { src: ncc18, alt: "NCC Visit Photo 18" },
+      { src: ncc19, alt: "NCC Visit Photo 19" },
+      { src: ncc20, alt: "NCC Visit Photo 20" },
+      { src: ncc21, alt: "NCC Visit Photo 21" },
+      { src: ncc22, alt: "NCC Visit Photo 22" },
+      { src: ncc23, alt: "NCC Visit Photo 23" },
+      { src: ncc24, alt: "NCC Visit Photo 24" },
+      { src: ncc25, alt: "NCC Visit Photo 25" },
+      { src: ncc26, alt: "NCC Visit Photo 26" },
+      { src: ncc27, alt: "NCC Visit Photo 27" },
     ]
   },
   "nacos-day": {
@@ -162,5 +192,3 @@ export const eventGalleries: Record<string, GallerySection> = {
     ]
   }
 };
-
-
