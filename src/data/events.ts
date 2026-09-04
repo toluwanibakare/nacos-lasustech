@@ -1,7 +1,8 @@
+import nacosDayFlyer from "@/assets/Events/nacos-day/flyer.jpeg";
 import bootcampFlyer from "@/assets/Events/PHOTO-2026-04-28-12-14-22.jpg";
 import ladiesInTechFlyer from "@/assets/Events/PHOTO-2026-04-29-09-06-01.jpg";
 import hodCupFlyer from "@/assets/Events/PHOTO-2026-04-24-17-16-18.jpg";
-import finalFixtureFlyer from "@/assets/Events/final_fixture.jpg";
+import nccVisitFlyer from "@/assets/Events/ncc-visit/IMG-16.jpg";
 
 export interface Event {
   id: string;
@@ -16,11 +17,20 @@ export interface Event {
 
 export const events: Event[] = [
   {
-    id: "hod-cup-finale",
-    title: "HOD'S CUP: THE GRAND FINALE",
-    date: "May 7, 2026",
-    description: "The ultimate glory awaits! Join us for the 3rd Place Match (100L vs 200L) at 12:00 NOON and the Final Match (300L vs 400L) at 1:30 PM. Venue: LASUSTECH Main Field.",
-    image: finalFixtureFlyer,
+    id: "ncc-visit",
+    title: "HONORARY VISIT TO THE NCC CHAIRMAN",
+    date: "August 4, 2026",
+    description: "An honorary visit to the Chairman of the Nigerian Communications Commission (NCC) by delegates of NACOS LASUSTECH Chapter, featuring award presentations, strategic discussions, and official recognitions.",
+    image: nccVisitFlyer,
+    upcoming: false,
+    contain: false,
+  },
+  {
+    id: "nacos-day",
+    title: "NACOS DAY 2026: AI & TECH SUMMIT",
+    date: "June 17, 2026",
+    description: "An extraordinary grand tech event featuring AI technology exhibitions, guest talks, and interactive sessions. Proudly supported by Web3Bridge, Resolva, Enyata, Oracle Academy, and top tech partners.",
+    image: nacosDayFlyer,
     upcoming: false,
     contain: true,
   },
@@ -53,3 +63,5 @@ export const events: Event[] = [
     contain: true,
   },
 ];
+
+

@@ -24,10 +24,10 @@ import { executives as staticExecutives } from "@/data/executives";
 import { events as staticEvents } from "@/data/events";
 
 // Latest Chapter Moments
-import moment1 from "@/assets/Events/bootcamp_onboarding/PHOTO-2026-04-29-19-36-10.jpg";
-import moment2 from "@/assets/Events/bootcamp_onboarding/PHOTO-2026-04-29-19-36-10(1).jpg";
-import moment3 from "@/assets/Events/bootcamp_onboarding/PHOTO-2026-04-29-19-36-11.jpg";
-import moment4 from "@/assets/Events/bootcamp_onboarding/PHOTO-2026-04-29-19-36-11(1).jpg";
+import moment1 from "@/assets/Events/nacos-day/Nacos 2026.jpg";
+import moment2 from "@/assets/Events/nacos-day/Nacos 2026-7.jpg";
+import moment3 from "@/assets/Events/nacos-day/Nacos 2026-14.jpg";
+import moment4 from "@/assets/Events/nacos-day/Nacos 2026-19.jpg";
 
 const quickActions = [
   { icon: LogIn, label: "Login", path: "#", action: "login", targetTab: "overview", desc: "Access your member portal" },
