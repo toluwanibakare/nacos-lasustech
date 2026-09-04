@@ -93,17 +93,12 @@ const Gallery = () => {
   return (
     <Layout>
       {/* Header Banner */}
-      <section className="relative isolate overflow-hidden bg-[#08111d] py-16 md:py-24">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(31,95,175,0.15),transparent_70%)]" />
-        <div className="container relative z-10">
-          <div className="max-w-2xl">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary">
-              <Images className="h-3.5 w-3.5" /> Media Archive
-            </span>
-            <h1 className="mt-3 font-display text-4xl font-extrabold tracking-tight text-white md:text-5xl">
-              Event Gallery
-            </h1>
-            <p className="mt-4 text-base leading-relaxed text-white/70 md:text-lg">
+      <section className="bg-foreground py-14 md:py-20">
+        <div className="container">
+          <div className="max-w-lg">
+            <span className="text-xs font-semibold uppercase tracking-widest text-primary">Media Archive</span>
+            <h1 className="mt-2 font-display text-3xl font-bold text-white md:text-4xl">Event Gallery</h1>
+            <p className="mt-3 text-sm leading-relaxed text-white/60">
               Explore captures, milestones, and memorable moments across all NACOS LASUSTECH events, organized chronologically.
             </p>
           </div>
