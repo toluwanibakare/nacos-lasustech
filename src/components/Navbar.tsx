@@ -17,6 +17,7 @@ import {
   MapPin,
   Award,
   Heart,
+  Images,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LoginModal from "@/components/LoginModal";
@@ -33,6 +34,7 @@ const getNavLinks = () => {
     { label: "Home", path: "/", icon: Home },
     { label: "Executives", path: "/executives", icon: Users },
     { label: "Events", path: "/events", icon: CalendarDays },
+    { label: "Gallery", path: "/gallery", icon: Images },
     { label: "Donate", path: "/donate", icon: Heart },
     // { label: "Awards", path: "https://awards.nacoslasustech.org.ng", icon: Award, external: true },
     { label: "Constitution", path: "/constitution", icon: BookOpen },

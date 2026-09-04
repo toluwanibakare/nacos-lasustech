@@ -68,14 +68,42 @@ export interface GallerySection {
   eventId: string;
   title: string;
   description: string;
+  date: string;
+  dateSortValue: string;
+  eventTag: string;
   images: GalleryImage[];
 }
 
 export const eventGalleries: Record<string, GallerySection> = {
+  "ncc-visit": {
+    eventId: "ncc-visit",
+    title: "HONORARY VISIT TO THE NCC CHAIRMAN GALLERY",
+    description: "Photos and captures from the honorary visit to the Chairman of the NCC on August 4th, 2026, featuring NACOS LASUSTECH delegates, award presentations, and official proceedings.",
+    date: "August 4, 2026",
+    dateSortValue: "2026-08-04",
+    eventTag: "NCC Visit",
+    images: [
+      { src: ncc1, alt: "NCC Visit 1" },
+      { src: ncc2, alt: "NCC Visit 2" },
+      { src: ncc3, alt: "NCC Visit 3" },
+      { src: ncc4, alt: "NCC Visit 4" },
+      { src: ncc5, alt: "NCC Visit 5" },
+      { src: ncc6, alt: "NCC Visit 6" },
+      { src: ncc7, alt: "NCC Visit 7" },
+      { src: ncc8, alt: "NCC Visit 8" },
+      { src: ncc9, alt: "NCC Visit 9" },
+      { src: ncc10, alt: "NCC Visit 10" },
+      { src: ncc11, alt: "NCC Visit 11" },
+      { src: ncc12, alt: "NCC Visit 12" },
+    ]
+  },
   "nacos-day": {
     eventId: "nacos-day",
     title: "NACOS DAY 2026 GALLERY",
     description: "Captivating highlights and gallery from NACOS Day 2026 (June 17th, 2026), featuring AI technology exhibitions and sessions with Web3Bridge, Resolva, Enyata, Oracle Academy, and top partners.",
+    date: "June 17, 2026",
+    dateSortValue: "2026-06-17",
+    eventTag: "NACOS Day 2026",
     images: [
       { src: nacosDay1, alt: "NACOS Day 2026 Highlights 1" },
       { src: nacosDay2, alt: "NACOS Day 2026 Highlights 2" },
@@ -95,6 +123,9 @@ export const eventGalleries: Record<string, GallerySection> = {
     eventId: "hod-cup",
     title: "HOD'S CUP 2025/2026 GALLERY",
     description: "Award certificates and highlight gallery from the annual HOD'S CUP tournament.",
+    date: "May 7, 2026",
+    dateSortValue: "2026-05-07",
+    eventTag: "HOD's Cup",
     images: [
       { src: hodCert1, alt: "HOD's Cup 1st Place Certificate" },
       { src: hodCert2, alt: "HOD's Cup 2nd Place Certificate" },
@@ -114,6 +145,9 @@ export const eventGalleries: Record<string, GallerySection> = {
     eventId: "bootcamp-onboarding",
     title: "NACOS UPSCALING BOOTCAMP ONBOARDING EVENT",
     description: "High-quality captures from our recent bootcamp onboarding and orientation session.",
+    date: "April 29, 2026",
+    dateSortValue: "2026-04-29",
+    eventTag: "Upscaling Bootcamp",
     images: [
       { src: bootcamp1, alt: "Bootcamp Onboarding 1" },
       { src: bootcamp2, alt: "Bootcamp Onboarding 2" },
@@ -125,34 +159,6 @@ export const eventGalleries: Record<string, GallerySection> = {
       { src: bootcamp8, alt: "Bootcamp Onboarding 8" },
       { src: bootcamp9, alt: "Bootcamp Onboarding 9" },
       { src: bootcamp10, alt: "Bootcamp Onboarding 10" },
-    ]
-  },
-  "ncc-visit": {
-    eventId: "ncc-visit",
-    title: "HONORARY VISIT TO THE NCC CHAIRMAN GALLERY",
-    description: "Photos and captures from the honorary visit to the Chairman of the NCC on August 4th, 2026, featuring NACOS LASUSTECH delegates, award presentations, and official proceedings.",
-    images: [
-      { src: ncc1, alt: "NCC Visit 1" },
-      { src: ncc2, alt: "NCC Visit 2" },
-      { src: ncc3, alt: "NCC Visit 3" },
-      { src: ncc4, alt: "NCC Visit 4" },
-      { src: ncc5, alt: "NCC Visit 5" },
-      { src: ncc6, alt: "NCC Visit 6" },
-      { src: ncc7, alt: "NCC Visit 7" },
-      { src: ncc8, alt: "NCC Visit 8" },
-      { src: ncc9, alt: "NCC Visit 9" },
-      { src: ncc10, alt: "NCC Visit 10" },
-      { src: ncc11, alt: "NCC Visit 11" },
-      { src: ncc12, alt: "NCC Visit 12" },
-    ]
-  },
-  "1": {
-    eventId: "1",
-    title: "NACOS Tech Summit Highlights",
-    description: "Memories from the annual Tech Summit gathering.",
-    images: [
-      { src: event1, alt: "Tech Summit Keynote" },
-      { src: gallery2, alt: "Panel Session" },
     ]
   }
 };

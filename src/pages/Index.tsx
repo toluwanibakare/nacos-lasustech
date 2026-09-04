@@ -349,7 +349,7 @@ const Index = () => {
             ))}
           </div>
           <div className="mt-8 text-center">
-            <Link to="/events">
+            <Link to="/gallery">
               <Button variant="outline" className="gap-2 text-xs font-semibold text-black">
                 View Full Gallery <ArrowRight className="h-3.5 w-3.5" />
               </Button>

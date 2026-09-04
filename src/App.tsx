@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard.tsx";
 import Contact from "./pages/Contact.tsx";
 import Constitution from "./pages/Constitution.tsx";
 import EventGallery from "./pages/EventGallery.tsx";
+import Gallery from "./pages/Gallery.tsx";
 import AdminPortal from "./pages/AdminPortal.tsx";
 import Awards from "./pages/Awards.tsx";
 import VotingCategories from "./pages/VotingCategories.tsx";
@@ -50,6 +51,7 @@ const App = () => {
             <Route path="/admin" element={<AdminPortal />} />
             <Route path="/contact" element={awardsMode ? <NotFound /> : <Contact />} />
             <Route path="/constitution" element={awardsMode ? <NotFound /> : <Constitution />} />
+            <Route path="/gallery" element={awardsMode ? <NotFound /> : <Gallery />} />
             <Route path="/events/:id/gallery" element={awardsMode ? <NotFound /> : <EventGallery />} />
             <Route path="/awards" element={<Awards />} />
             <Route path="/voting/categories" element={<VotingCategories />} />

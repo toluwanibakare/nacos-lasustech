@@ -30,6 +30,7 @@ const quickLinks = [
   { label: "Home", path: "/" },
   { label: "Executives", path: "/executives" },
   { label: "Events", path: "/events" },
+  { label: "Gallery", path: "/gallery" },
   { label: "Donate", path: "/donate" },
   { label: "Contact Us", path: "/contact" },
 ];

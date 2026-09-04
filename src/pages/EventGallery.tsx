@@ -24,8 +24,8 @@ const EventGallery = () => {
         <div className="container py-20 text-center">
           <h2 className="text-2xl font-bold">Gallery Not Found</h2>
           <p className="mt-4 text-muted-foreground">The requested gallery does not exist or has no images yet.</p>
-          <Link to="/events">
-            <Button className="mt-8">Back to Events</Button>
+          <Link to="/gallery">
+            <Button className="mt-8">Back to Gallery</Button>
           </Link>
         </div>
       </Layout>
@@ -46,12 +46,12 @@ const EventGallery = () => {
     <Layout>
       <section className="bg-foreground py-14 md:py-20">
         <div className="container">
-          <button 
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary hover:text-primary/80 transition-colors"
+          <Link 
+            to="/gallery"
+            className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary hover:text-primary/80 transition-colors"
           >
-            <ArrowLeft className="h-4 w-4" /> Back to Events
-          </button>
+            <ArrowLeft className="h-4 w-4" /> Back to Gallery
+          </Link>
           <div className="mt-6 max-w-2xl">
             <h1 className="font-display text-3xl font-bold text-white md:text-4xl">{gallery.title}</h1>
             <p className="mt-3 text-sm leading-relaxed text-white/60">
