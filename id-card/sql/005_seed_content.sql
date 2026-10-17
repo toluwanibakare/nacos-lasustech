@@ -9,7 +9,7 @@
 
 INSERT IGNORE INTO `executives` (`id`, `name`, `post`, `level`, `image_url`, `description`, `sort_order`, `is_active`) VALUES
   (1, 'Shofunde Jubril Ajibola', 'President', '400 Level', 'uploads/president.jpg', 'Serves as the primary leader and official representative of the NACOS LASUSTECH Chapter, overseeing all activities and strategic growth.', 1, 1),
-  (2, 'Toluwani Moses Bakare', 'Vice President', '300 Level', 'uploads/vice_president.jpg', 'Acts as the chief assistant to the President, coordinating administrative programs and ensuring organizational stability.', 2, 1),
+  (2, 'Bakare Toluwani Moses', 'Vice President', '300 Level', 'uploads/vice_president.jpg', 'Acts as the chief assistant to the President, coordinating administrative programs and ensuring organizational stability.', 2, 1),
   (3, 'Owolabi Grace Oluwafunmilayo', 'Lady Vice-President', '200 Level', 'uploads/lady_vice.jpeg', 'Focuses on the empowerment and representation of female students within the computing community and supporting top-level initiatives.', 3, 1),
   (4, 'Oladepo Damilare David', 'General Secretary', '300 Level', 'uploads/gensec.jpeg', 'The custodian of chapter records, responsible for official documentation, correspondence, and meeting coordination.', 4, 1),
   (5, 'Emmanuel Ariyo Ogunfunwa', 'Assistant General Secretary', '200 Level', 'uploads/ass_gensec.jpg', 'Supports the General Secretary in administrative duties and ensures continuous documentation of chapter affairs.', 5, 1),
