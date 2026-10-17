@@ -10,7 +10,7 @@ const API_KEY = process.env.ID_SYSTEM_API_KEY || 'NACOS_LASUSTECH_SECURE_API_KEY
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 // On Vercel, filesystem is read-only except /tmp. Data won't persist
-// between invocations on Vercel — defaults will be used each time.
+// between invocations on Vercel, so defaults will be used each time.
 const STORE_DIR = process.env.VERCEL
   ? '/tmp/data'
   : path.join(__dirname, '../data');

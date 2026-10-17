@@ -1,4 +1,5 @@
 import { Calendar } from "lucide-react";
+import Reveal from "@/components/Reveal";
 
 interface EventCardProps {
   title: string;
@@ -10,13 +11,16 @@ interface EventCardProps {
   ongoing?: boolean;
   upcoming?: boolean;
   contain?: boolean;
+  /** Seconds to delay the reveal, to stagger a row. */
+  revealDelay?: number;
 }
 
-const EventCard = ({ title, date, description, image, featured, onClick, ongoing, upcoming, contain }: EventCardProps) => {
-  const cardClassName = `group overflow-hidden rounded-2xl border border-border bg-card transition-all duration-300 hover:shadow-xl hover:-translate-y-1 animate-reveal ${onClick ? "cursor-pointer" : ""}`;
+const EventCard = ({ title, date, description, image, featured, onClick, ongoing, upcoming, contain, revealDelay = 0 }: EventCardProps) => {
+  const cardClassName = `group h-full overflow-hidden rounded-2xl border border-border bg-card transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/40 ${onClick ? "cursor-pointer" : ""}`;
 
   if (featured) {
     return (
+      <Reveal delay={revealDelay} className="h-full">
       <div className={cardClassName} onClick={onClick}>
         <div className="md:grid md:grid-cols-2 h-full">
           <div className={`aspect-video overflow-hidden md:aspect-auto md:h-full ${contain ? "bg-black/90" : "bg-muted"}`}>
@@ -55,10 +59,12 @@ const EventCard = ({ title, date, description, image, featured, onClick, ongoing
           </div>
         </div>
       </div>
+      </Reveal>
     );
   }
 
   return (
+    <Reveal delay={revealDelay} className="h-full">
     <div className={cardClassName} onClick={onClick}>
       <div className={`aspect-video overflow-hidden relative ${contain ? "bg-black/90" : "bg-muted"}`}>
         <img 
@@ -85,6 +91,7 @@ const EventCard = ({ title, date, description, image, featured, onClick, ongoing
         <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground line-clamp-2">{description}</p>
       </div>
     </div>
+    </Reveal>
   );
 };
 

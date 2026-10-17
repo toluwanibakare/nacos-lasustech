@@ -126,7 +126,7 @@ const Admins = () => {
                   </Td>
                   <Td className="text-xs">{formatDate(a.created_at)}</Td>
                   <Td className="text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex flex-wrap justify-end gap-2">
                       <Button size="sm" variant="outline" className="h-8 rounded-full px-3 text-xs" onClick={() => openEdit(a)}>Edit pages</Button>
                       <Button size="sm" variant="outline" className="h-8 rounded-full px-3 text-xs text-red-600" onClick={() => setRemoving(a)}>Remove</Button>
                     </div>

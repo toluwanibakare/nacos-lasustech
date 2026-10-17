@@ -100,7 +100,7 @@ const Students = () => {
                     <Td>{rolePill(s)}</Td>
                     <Td className="max-w-[180px] truncate text-xs">{s.email || <span className="text-muted-foreground">none</span>}</Td>
                     <Td className="text-right">
-                      <div className="flex justify-end gap-1.5">
+                      <div className="flex flex-wrap justify-end gap-1.5">
                         <Button size="sm" variant={s.post === "HOC" ? "default" : "outline"} className="h-8 rounded-full px-3 text-xs" disabled={s.post === "HOC"} onClick={() => setRolePick({ student: s, post: "HOC" })}>
                           HOC
                         </Button>

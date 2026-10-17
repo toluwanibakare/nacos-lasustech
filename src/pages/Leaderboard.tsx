@@ -351,7 +351,7 @@ const Leaderboard = () => {
                   Real‑Time <span className="text-primary">Leaderboard</span>
                 </h1>
                 <p className="text-white/50 mt-3 text-lg max-w-2xl">
-                  Live standings across all award categories — watch who is pulling ahead.
+                  Live standings across all award categories. Watch who is pulling ahead.
                 </p>
               </div>
             </div>

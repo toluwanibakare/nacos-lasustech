@@ -1,3 +1,5 @@
+import Reveal from "@/components/Reveal";
+
 interface ExecutiveCardProps {
   name: string;
   post: string;
@@ -5,11 +7,14 @@ interface ExecutiveCardProps {
   description: string;
   image: string;
   objectPosition?: string;
+  /** Seconds to delay the reveal, to stagger a row. */
+  revealDelay?: number;
 }
 
-const ExecutiveCard = ({ name, post, level, description, image, objectPosition = "object-center" }: ExecutiveCardProps) => {
+const ExecutiveCard = ({ name, post, level, description, image, objectPosition = "object-center", revealDelay = 0 }: ExecutiveCardProps) => {
   return (
-    <div className="group rounded-2xl border border-border bg-card overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 animate-reveal">
+    <Reveal delay={revealDelay} className="h-full">
+    <div className="group h-full rounded-2xl border border-border bg-card overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/40">
       <div className="aspect-[3/4] overflow-hidden bg-muted">
         <img
           src={image}
@@ -26,6 +31,7 @@ const ExecutiveCard = ({ name, post, level, description, image, objectPosition =
         <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{description}</p>
       </div>
     </div>
+    </Reveal>
   );
 };
 

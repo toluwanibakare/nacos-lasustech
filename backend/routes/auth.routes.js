@@ -15,7 +15,7 @@ const API_KEY = process.env.ID_SYSTEM_API_KEY || 'NACOS_LASUSTECH_SECURE_API_KEY
  * These routes act as a secure bridge to the central PHP system.
  */
 
-// ── SMTP transporter — port 587 STARTTLS + dnsLookup IPv4 to avoid ENETUNREACH
+// ── SMTP transporter: port 587 STARTTLS + dnsLookup IPv4 to avoid ENETUNREACH
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: 587,

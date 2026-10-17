@@ -157,3 +157,48 @@
     mask-composite: exclude;
   }
 }
+
+
+/* ---------------------------------------------------------------------------
+   Motion and finish
+   --------------------------------------------------------------------------- */
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.22);
+}
+
+/* Design rule: no box shadows. Tailwind's shadow utilities are neutralised here, while
+   focus rings (ring-*) are left alone so keyboard focus stays visible. */
+[class*="shadow-"],
+.shadow {
+  --tw-shadow: 0 0 #0000 !important;
+  --tw-shadow-colored: 0 0 #0000 !important;
+}
+
+@keyframes kenburns {
+  from { transform: scale(1.04) translate3d(0, 0, 0); }
+  to   { transform: scale(1.14) translate3d(-1.2%, -1.2%, 0); }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(3%, -4%, 0); }
+}
+
+
+@layer utilities {
+  .hero-zoom { animation: kenburns 26s ease-in-out infinite alternate; will-change: transform; }
+  .animate-float-slow { animation: float-slow 14s ease-in-out infinite; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .hero-zoom, .animate-float-slow, .animate-reveal,
+  .animate-reveal-delay-1, .animate-reveal-delay-2, .animate-reveal-fast {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}

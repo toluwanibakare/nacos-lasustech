@@ -106,7 +106,7 @@ const Gallery = () => {
       </section>
 
       {/* Filter and Sorting Controls */}
-      <section className="border-b border-border bg-card py-6 sticky top-[64px] sm:top-[76px] z-30 shadow-sm backdrop-blur-md bg-card/95">
+      <section className="border-b border-border bg-card py-6 sticky top-[64px] lg:top-[76px] z-30 shadow-sm backdrop-blur-md bg-card/95">
         <div className="container">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             {/* Filter by Event Tag */}

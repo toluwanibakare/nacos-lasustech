@@ -1,10 +1,12 @@
 import { Calendar, User, ArrowRight } from "lucide-react";
 import { Button } from "./ui/button";
 import { BlogPost } from "@/data/blogs";
+import Reveal from "@/components/Reveal";
 
 const BlogCard = ({ title, excerpt, author, date, category, image }: BlogPost) => {
   return (
-    <div className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all duration-300 hover:shadow-lg">
+    <Reveal className="h-full">
+    <div className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/40">
       <div className="relative aspect-[16/9] overflow-hidden">
         <img
           src={image}
@@ -41,6 +43,7 @@ const BlogCard = ({ title, excerpt, author, date, category, image }: BlogPost) =
         </div>
       </div>
     </div>
+    </Reveal>
   );
 };
 

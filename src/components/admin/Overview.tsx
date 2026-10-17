@@ -82,9 +82,9 @@ const Overview = () => {
                 <tr>
                   <Th>Level</Th>
                   {departments.map((d) => (
-                    <Th key={d}>{d}</Th>
+                    <Th key={d} className="text-center">{d}</Th>
                   ))}
-                  <Th>Total</Th>
+                  <Th className="text-center">Total</Th>
                 </tr>
               </thead>
               <tbody>
@@ -92,9 +92,9 @@ const Overview = () => {
                   <tr key={level}>
                     <Td className="font-semibold">{levelLabel(level)}</Td>
                     {departments.map((d) => (
-                      <Td key={d}>{count(level, d)}</Td>
+                      <Td key={d} className="text-center">{count(level, d)}</Td>
                     ))}
-                    <Td className="font-semibold">{students.filter((s) => s.level === level).length}</Td>
+                    <Td className="text-center font-semibold">{students.filter((s) => s.level === level).length}</Td>
                   </tr>
                 ))}
               </tbody>

@@ -139,8 +139,6 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isDirty, setIsDirty] = useState(false);
   const [initialEmailSet, setInitialEmailSet] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fees, setFees] = useState<Fees | null>(null);
@@ -203,28 +201,6 @@ const Dashboard = () => {
     return `${visibleName}*******@${maskedDomain}.${tld}`;
   };
 
-
-  const handleRequestOtp = async () => {
-    if (!profile.email) {
-      toast({ 
-        title: "Email Missing", 
-        description: "You haven't set up your email yet. Please contact the admin on WhatsApp at +234 802 632 2742.", 
-        variant: "destructive" 
-      });
-      return;
-    }
-    
-    try {
-      await fetchApi('/auth/request-otp', {
-        method: 'POST',
-        body: JSON.stringify({ matric_number: profile.matricNumber })
-      });
-      setOtpSent(true);
-      toast({ title: "OTP Sent", description: `A verification code has been sent to ${hashEmail(profile.email)}` });
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    }
-  };
 
   useEffect(() => {
     localStorage.setItem("dashboard_active_tab", activeTab);
@@ -1205,6 +1181,10 @@ const PasswordResetDialog = ({ matricNumber }: { matricNumber: string }) => {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (newPassword.length < 8) {
+      toast({ title: "Password too short", description: "Use at least 8 characters.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     try {
       await fetchApi('/auth/reset-password', {
@@ -1217,7 +1197,7 @@ const PasswordResetDialog = ({ matricNumber }: { matricNumber: string }) => {
       setOtp("");
       setNewPassword("");
     } catch (err: any) {
-      toast({ title: "Error", description: "Failed to reset password.", variant: "destructive" });
+      toast({ title: "Error", description: err.message || "Failed to reset password.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -1323,9 +1303,11 @@ const PasswordResetDialog = ({ matricNumber }: { matricNumber: string }) => {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
+                minLength={8}
                 autoFocus
                 className="rounded-xl border-border/50 bg-muted/30"
               />
+              <p className="text-[10px] text-muted-foreground">At least 8 characters.</p>
             </div>
             <Button type="submit" className="w-full rounded-xl" disabled={loading}>
               {loading ? "Saving..." : "Save New Password"}

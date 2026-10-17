@@ -63,6 +63,9 @@ app.use(cors({
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
+  // The admin API already needs a signed-in admin token, and one admin session makes many calls.
+  // The login routes keep their own stricter limit (authLimiter).
+  skip: (req) => req.path.startsWith('/api/admin/'),
   message: 'Too many requests from this IP, please try again after 15 minutes.'
 });
 
@@ -117,7 +120,7 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-// Vercel Cron Job endpoint — called daily at 07:00 UTC
+// Vercel Cron Job endpoint, called daily at 07:00 UTC
 // Configured in vercel.json: "0 7 * * *"
 app.get('/api/cron/birthday', async (req, res) => {
   // Secure the cron endpoint so only Vercel can call it

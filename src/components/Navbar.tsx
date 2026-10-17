@@ -47,6 +47,14 @@ const Navbar = () => {
   const [loginOpen, setLoginOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const location = useLocation();
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -68,7 +76,7 @@ const Navbar = () => {
 
   return (
     <>
-      <nav className="sticky top-0 z-50 border-b border-border/70 bg-white/88 backdrop-blur-xl">
+      <nav className={`sticky top-0 z-50 border-b backdrop-blur-xl transition-all duration-300 ${scrolled ? "border-border bg-white/95" : "border-border/60 bg-white/80"}`}>
         <div className="container">
           <div className="flex h-16 items-center justify-between lg:h-[76px]">
 

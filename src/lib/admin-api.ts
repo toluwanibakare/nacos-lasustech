@@ -5,7 +5,7 @@
  *
  *  Frontend  →  localhost:5000/api  (your local Node.js backend)
  *                    ↓
- *              nacosid.tmb.it.com  (central PHP system — backend talks to this)
+ *              nacosid.tmb.it.com  (central PHP system, the backend talks to this)
  *
  *  Voting:   →  localhost:5050/api  (local voting backend)
  *

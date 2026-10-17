@@ -259,12 +259,12 @@ const Footer = () => {
           <div className="mt-3 flex flex-col items-center gap-2 text-white/30 md:flex-row md:justify-center md:gap-6">
             <p className="flex items-center gap-1">
               Built with <Heart className="h-3 w-3 fill-pink-500/40 text-pink-500/40" /> by{" "}
-              <span className="text-white/50 space-x-1">
-                <a href="https://tmb.it.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors underline underline-offset-4">TMB</a>,
-                <a href="#" className="hover:text-white transition-colors underline underline-offset-4">Muqtech</a>,
-                <a href="#" className="hover:text-white transition-colors underline underline-offset-4">DevMoh</a>,
-                <a href="https://makinde-portfolio.vercel.app" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors underline underline-offset-4">Polytencode</a>,
-                & <a href="https://devola.xyz" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors underline underline-offset-4">Olamzyweb</a>
+              <span className="text-white/50">
+                <a href="https://tmb.it.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors underline underline-offset-4">TMB</a>
+                {", "}
+                <a href="#" className="hover:text-white transition-colors underline underline-offset-4">DevMoh</a>
+                {" & "}
+                <a href="https://devola.xyz" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors underline underline-offset-4">Olamzyweb</a>
               </span>
             </p>
             <p className="hidden md:block opacity-10">|</p>

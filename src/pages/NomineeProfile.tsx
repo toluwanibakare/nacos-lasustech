@@ -318,7 +318,7 @@ Your support will be highly appreciated, and God bless you as you do so. Please 
           <div className="absolute top-0 right-0 w-96 h-96 bg-primary/15 rounded-full blur-[100px] z-10 select-none pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-600/5 rounded-full blur-[100px] z-10 select-none pointer-events-none" />
 
-          {/* Back button — top left */}
+          {/* Back button, top left */}
           <div className="absolute top-8 left-0 right-0 container px-4 z-30">
             <button
               onClick={handleBack}
@@ -329,7 +329,7 @@ Your support will be highly appreciated, and God bless you as you do so. Please 
             </button>
           </div>
 
-          {/* Award category label — bottom of banner */}
+          {/* Award category label, bottom of banner */}
           <div className="absolute bottom-0 left-0 right-0 container px-4 z-30 pb-20">
             <div className="flex items-center gap-3 mb-3">
               <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shadow-lg">
