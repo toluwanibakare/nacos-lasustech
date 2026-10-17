@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import dns from 'dns';
 import dotenv from 'dotenv';
+import { centralGet, centralPost } from './central.service.js';
 
 dotenv.config();
 
@@ -32,14 +33,52 @@ const transporter = nodemailer.createTransport({
   socketTimeout: 20000,
 });
 
-// Verify connection
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ Email Server Error:', error);
-  } else {
-    console.log('🚀 Email Server is ready to take our messages');
+// Two ways to send:
+//  - EMAIL_TRANSPORT=central: ask the central PHP API to send it (used on Render, whose free plan blocks the
+//    SMTP ports; the PHP server sends through its own mail account).
+//  - otherwise: send straight over SMTP with the settings above (used on a computer or a host that allows it).
+const USE_CENTRAL = process.env.EMAIL_TRANSPORT === 'central';
+export const usesCentralMail = USE_CENTRAL;
+
+/** Sends one prepared email through the central PHP API. */
+const sendViaCentral = async (mailOptions) => {
+  const fromName = String(mailOptions.from || '').match(/^"?([^"<]+?)"?\s*</)?.[1];
+  try {
+    await centralPost('send_email', {
+      to: mailOptions.to,
+      subject: mailOptions.subject,
+      html: mailOptions.html,
+      text: mailOptions.text,
+      from_name: fromName,
+      reply_to: mailOptions.replyTo,
+    });
+  } catch (error) {
+    // Keep the PHP API's own explanation (for example "mail_config.php is missing") instead of a bare status code.
+    const reason = error.response?.data?.message || error.message;
+    const wrapped = new Error(reason);
+    // 429 means the PHP server's hourly sending cap was reached: not a failure, just wait and try again.
+    wrapped.code = error.response?.status === 429 ? 'ERATELIMIT' : error.response ? 'ECENTRAL' : 'ECONNECTION';
+    throw wrapped;
   }
-});
+  return { accepted: [mailOptions.to], rejected: [] };
+};
+
+const mailer = {
+  sendMail: (mailOptions) => (USE_CENTRAL ? sendViaCentral(mailOptions) : transporter.sendMail(mailOptions)),
+};
+
+if (USE_CENTRAL) {
+  console.log('✉️  Email is sent through the central PHP server.');
+} else {
+  // Verify connection
+  transporter.verify((error, success) => {
+    if (error) {
+      console.error('❌ Email Server Error:', error);
+    } else {
+      console.log('🚀 Email Server is ready to take our messages');
+    }
+  });
+}
 
 const APP_NAME = 'NACOS LASUSTECH';
 
@@ -98,7 +137,7 @@ export const sendContactConfirmation = async (userEmail, userName) => {
     `,
   };
 
-  return transporter.sendMail(mailOptions);
+  return mailer.sendMail(mailOptions);
 };
 
 /**
@@ -128,7 +167,7 @@ export const sendContactNotificationToAdmin = async (contactData) => {
     replyTo: email
   };
 
-  return transporter.sendMail(mailOptions);
+  return mailer.sendMail(mailOptions);
 };
 
 /**
@@ -172,7 +211,7 @@ export const sendPaymentReceipt = async (userEmail, userName, paymentData) => {
     `,
   };
 
-  return transporter.sendMail(mailOptions);
+  return mailer.sendMail(mailOptions);
 };
 
 /**
@@ -202,7 +241,7 @@ export const sendPaymentNotificationToAdmin = async (paymentData, userDetails) =
     `,
   };
 
-  return transporter.sendMail(mailOptions);
+  return mailer.sendMail(mailOptions);
 };
 
 /**
@@ -230,7 +269,7 @@ export const sendPasswordReset = async (userEmail, userName, tempPassword) => {
     `,
   };
 
-  return transporter.sendMail(mailOptions);
+  return mailer.sendMail(mailOptions);
 };
 
 /**
@@ -256,7 +295,7 @@ export const sendOtp = async (userEmail, userName, otpCode) => {
     `,
   };
 
-  return transporter.sendMail(mailOptions);
+  return mailer.sendMail(mailOptions);
 };
 
 /**
@@ -282,7 +321,7 @@ export const sendVerificationCode = async (userEmail, userName, otpCode) => {
     `,
   };
 
-  return transporter.sendMail(mailOptions);
+  return mailer.sendMail(mailOptions);
 };
 
 /**
@@ -300,11 +339,20 @@ export const sendCustomEmail = async (to, subject, htmlContent) => {
     `,
   };
 
-  return transporter.sendMail(mailOptions);
+  return mailer.sendMail(mailOptions);
 };
 
 /** Resolves if the mail server accepts our connection and login; rejects with the reason otherwise. */
-export const verifyConnection = () => transporter.verify();
+export const verifyConnection = async () => {
+  if (!USE_CENTRAL) return transporter.verify();
+  const result = await centralGet('email_check');
+  if (!result.ok) {
+    const error = new Error(result.error || 'The central mail server could not be used.');
+    error.code = 'ECENTRAL';
+    throw error;
+  }
+  return true;
+};
 
 /** Turns a mail error into something a person can act on. */
 export const friendlyMailError = (error) => {
@@ -315,6 +363,25 @@ export const friendlyMailError = (error) => {
   if (code === 'EAUTH') return 'The mail server rejected the login. Check SMTP_USER and SMTP_PASS.';
   if (code === 'EENVELOPE') return 'The mail server did not accept the sender or recipient address. Check MAIL_FROM is a verified sender.';
   return error?.message || 'The mail could not be sent.';
+};
+
+/** What the admin "Test email connection" button reports: where mail goes and whether it works. */
+export const checkMail = async () => {
+  if (USE_CENTRAL) {
+    try {
+      const result = await centralGet('email_check');
+      return { ok: Boolean(result.ok), via: 'central', host: result.host, port: result.port, from: result.from, error: result.error, sentLastHour: result.sent_last_hour, hourlyLimit: result.hourly_limit };
+    } catch (error) {
+      return { ok: false, via: 'central', host: 'central PHP server', port: null, from: null, error: error.response?.data?.message || 'Could not reach the central PHP server.' };
+    }
+  }
+  const summary = { via: 'smtp', host: process.env.SMTP_HOST || 'smtp.gmail.com', port: SMTP_PORT, from: process.env.MAIL_FROM || process.env.SMTP_USER || null };
+  try {
+    await transporter.verify();
+    return { ok: true, ...summary };
+  } catch (error) {
+    return { ok: false, ...summary, error: friendlyMailError(error) };
+  }
 };
 
 export const mailSettingsSummary = () => ({
@@ -333,6 +400,7 @@ export default {
   sendVerificationCode,
   sendCustomEmail,
   verifyConnection,
+  checkMail,
   friendlyMailError,
   mailSettingsSummary,
 };

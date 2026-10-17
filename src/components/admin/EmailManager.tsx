@@ -28,10 +28,13 @@ const audienceText = (type: string, level?: string | null, dept?: string | null)
 
 interface EmailCheck {
   ok: boolean;
+  via?: "central" | "smtp";
   host: string;
-  port: number;
+  port: number | null;
   from: string | null;
   error?: string;
+  sentLastHour?: number;
+  hourlyLimit?: number;
 }
 
 const EmailManager = () => {
@@ -151,8 +154,12 @@ const EmailManager = () => {
         <div className={`rounded-2xl border p-4 text-sm ${check.ok ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-900"}`}>
           <p className="font-semibold">{check.ok ? "The mail server accepted our connection and login." : "The mail server could not be used."}</p>
           <p className="mt-1 break-words text-xs">
-            Server {check.host}, port {check.port}{check.from ? `, sending as ${check.from}` : ""}.{check.error ? ` ${check.error}` : ""}
+            {check.via === "central" ? "Sent through the cPanel mail account" : "Mail server"} {check.host}
+            {check.port ? `, port ${check.port}` : ""}{check.from ? `, sending as ${check.from}` : ""}.{check.error ? ` ${check.error}` : ""}
           </p>
+          {check.hourlyLimit !== undefined && (
+            <p className="mt-1 text-xs">Emails sent in the last hour: {check.sentLastHour ?? 0} of {check.hourlyLimit} allowed.</p>
+          )}
         </div>
       )}
       <Card title="Compose">

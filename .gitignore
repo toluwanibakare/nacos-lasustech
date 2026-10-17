@@ -40,3 +40,6 @@ id-card/*
 # Private deploy bundles (they contain the live .env)
 *.tar.gz
 backend-update*
+
+# The mail account password lives only on the server
+cpanel-api/mail_config.php

@@ -559,13 +559,7 @@ router.delete('/admins/:studentId', central(async (req, res) => {
 
 // Does the mail server accept our connection and login? Handy right after changing the mail settings.
 router.get('/email-check', async (_req, res) => {
-  const settings = emailService.mailSettingsSummary();
-  try {
-    await emailService.verifyConnection();
-    res.json({ ok: true, ...settings });
-  } catch (error) {
-    res.json({ ok: false, ...settings, error: emailService.friendlyMailError(error) });
-  }
+  res.json(await emailService.checkMail());
 });
 
 export default router;

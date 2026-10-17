@@ -1442,4 +1442,68 @@ if ($action === 'admin_access_remove') {
     json_out(['status' => 'success']);
 }
 
+// ─── Email relay: the Node backend (on Render) asks this server to send its mail ─────────────────────────
+
+/** Number of emails sent or attempted in the last hour, or 0 if the log table has not been created yet. */
+function emails_in_last_hour(PDO $pdo): int
+{
+    try {
+        return (int) $pdo->query('SELECT COUNT(*) FROM email_log WHERE sent_at > (NOW() - INTERVAL 1 HOUR)')->fetchColumn();
+    } catch (Throwable $e) {
+        return 0;
+    }
+}
+
+if ($action === 'send_email') {
+    need_post($method);
+    require_once __DIR__ . '/lib/mailer.php';
+    $in = input();
+
+    $to = trim((string) ($in['to'] ?? ''));
+    if (!filter_var($to, FILTER_VALIDATE_EMAIL) || strlen($to) > 254) fail('A valid recipient address is required.');
+    $subject = trim(preg_replace('/[\r\n]+/', ' ', (string) ($in['subject'] ?? '')));
+    if ($subject === '' || mb_strlen($subject) > 250) fail('A subject of up to 250 characters is required.');
+    $html = (string) ($in['html'] ?? '');
+    if (trim($html) === '' || strlen($html) > 300000) fail('A message body (up to 300 KB) is required.');
+    $text = isset($in['text']) ? (string) $in['text'] : null;
+    $fromName = isset($in['from_name']) ? trim(preg_replace('/[\r\n"<>]+/', ' ', (string) $in['from_name'])) : null;
+    if ($fromName !== null && mb_strlen($fromName) > 80) $fromName = mb_substr($fromName, 0, 80);
+    $replyTo = trim((string) ($in['reply_to'] ?? ''));
+    if ($replyTo !== '' && !filter_var($replyTo, FILTER_VALIDATE_EMAIL)) $replyTo = '';
+
+    $cfg = mail_settings();
+    if (emails_in_last_hour($pdo) >= $cfg['hourly_limit']) {
+        fail('The hourly email limit (' . $cfg['hourly_limit'] . ') has been reached. Try again later.', 429);
+    }
+
+    $error = null;
+    try {
+        mail_send($cfg, $to, $subject, $html, $text, $fromName, $replyTo !== '' ? $replyTo : null);
+    } catch (Throwable $e) {
+        $error = mail_friendly_error($e);
+    }
+
+    try {
+        $pdo->prepare('INSERT INTO email_log (to_email, subject, status, error) VALUES (?, ?, ?, ?)')
+            ->execute([$to, mb_substr($subject, 0, 255), $error === null ? 'sent' : 'failed', $error]);
+    } catch (Throwable $e) {
+        // The log table is missing (migration 008 not run yet). Sending still worked, so carry on.
+    }
+
+    if ($error !== null) fail('Could not send the email: ' . $error, 502);
+    json_out(['status' => 'success']);
+}
+
+if ($method === 'GET' && $action === 'email_check') {
+    require_once __DIR__ . '/lib/mailer.php';
+    $cfg = mail_settings();
+    $result = ['host' => $cfg['host'], 'port' => (int) $cfg['port'], 'from' => $cfg['from_email'], 'sent_last_hour' => emails_in_last_hour($pdo), 'hourly_limit' => $cfg['hourly_limit']];
+    try {
+        mail_check($cfg);
+        json_out(['ok' => true] + $result);
+    } catch (Throwable $e) {
+        json_out(['ok' => false, 'error' => mail_friendly_error($e)] + $result);
+    }
+}
+
 fail('Unknown action.', 404);

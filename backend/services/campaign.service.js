@@ -1,4 +1,4 @@
-import emailService from './email.service.js';
+import emailService, { usesCentralMail } from './email.service.js';
 import { centralGet, centralPost } from './central.service.js';
 
 /**
@@ -9,13 +9,14 @@ import { centralGet, centralPost } from './central.service.js';
  * backend can run as a serverless function). The browser keeps calling
  * send-batch until `done` is true.
  *
- * Gmail caps how many emails an account can send per day (roughly 500 for a
- * personal account), so create() reports a warning for large audiences.
+ * Email providers cap how many emails can be sent per day, so create() reports a warning for
+ * large audiences.
  */
 
 const BATCH_SIZE = 20;
 const PARALLEL = 5;
-const GMAIL_DAILY_SOFT_LIMIT = 450;
+// How many emails the provider lets us send in a day (Brevo free: 300, Gmail: about 500). Set MAIL_DAILY_LIMIT to match.
+const DAILY_SOFT_LIMIT = Number(process.env.MAIL_DAILY_LIMIT) || 300;
 
 const escapeHtml = (text) =>
   text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -38,8 +39,8 @@ export const createCampaign = async ({ subject, body, audience, sentBy }) => {
   return {
     ...campaign,
     warning:
-      campaign.with_email > GMAIL_DAILY_SOFT_LIMIT
-        ? `This audience has ${campaign.with_email} emails. Gmail may stop sending after about ${GMAIL_DAILY_SOFT_LIMIT} a day; remaining emails will be counted as failed.`
+      campaign.with_email > DAILY_SOFT_LIMIT
+        ? `This audience has ${campaign.with_email} emails. Your email provider may stop sending after about ${DAILY_SOFT_LIMIT} a day (codes and receipts count too); remaining emails will be counted as failed.`
         : null,
   };
 };
@@ -73,26 +74,39 @@ export const sendCampaignBatch = async (campaignId, { fromRunner = false } = {})
     limit: BATCH_SIZE,
   });
 
+  // Through the central PHP server we send one at a time: its hourly cap can then only cut a batch
+  // short at a clean point, and the next batch carries on from exactly there.
+  const parallel = usesCentralMail ? 1 : PARALLEL;
   let sent = 0;
   let failed = 0;
-  for (let i = 0; i < recipients.length; i += PARALLEL) {
-    const chunk = recipients.slice(i, i + PARALLEL);
+  let rateLimited = false;
+  for (let i = 0; i < recipients.length && !rateLimited; i += parallel) {
+    const chunk = recipients.slice(i, i + parallel);
     const results = await Promise.allSettled(
       chunk.map((r) => emailService.sendCustomEmail(r.email, campaign.subject, renderBody(campaign.body, r.name))),
     );
-    results.forEach((result, index) => {
+    for (let index = 0; index < results.length; index += 1) {
+      const result = results[index];
       if (result.status === 'fulfilled') {
         sent += 1;
+      } else if (result.reason?.code === 'ERATELIMIT') {
+        // The server's hourly cap: not counted as sent or failed, so this person is tried again later.
+        rateLimited = true;
+        break;
       } else {
         failed += 1;
         console.error(`Campaign ${campaignId} email to ${chunk[index].email} failed:`, result.reason?.message);
       }
-    });
+    }
   }
 
-  const done = recipients.length < BATCH_SIZE;
+  const done = !rateLimited && recipients.length < BATCH_SIZE;
   const updated = await centralPost('email_campaign_progress', { id: campaignId, sent, failed, done });
-  return { done, campaign: updated };
+  if (rateLimited) {
+    console.warn(`⏸️  Campaign ${campaignId}: hourly email cap reached, waiting before carrying on.`);
+    await sleep(5000); // so a browser that keeps asking does not spin
+  }
+  return { done, rateLimited, campaign: updated };
 };
 
 export const listCampaigns = () => centralGet('email_campaigns');
@@ -109,9 +123,9 @@ export const startCampaignInBackground = (campaignId) => {
   (async () => {
     try {
       for (;;) {
-        const { done } = await sendCampaignBatch(campaignId, { fromRunner: true });
+        const { done, rateLimited } = await sendCampaignBatch(campaignId, { fromRunner: true });
         if (done) break;
-        await sleep(1500);
+        await sleep(rateLimited ? 60000 : 1500); // at the hourly cap, check again in a minute
       }
       console.log(`✉️  Campaign ${campaignId} finished sending.`);
     } catch (error) {
