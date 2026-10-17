@@ -35,6 +35,7 @@ router.get('/executives', async (_req, res) => {
           post: item.post,
           level: item.level,
           description: item.description,
+          session: item.session,
           image: item.image_url,
         })),
       );

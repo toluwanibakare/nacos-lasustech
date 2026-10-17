@@ -24,6 +24,7 @@ import {
   listBlogs,
   listEvents,
   listExecutives,
+  listExecutiveSessions,
   saveBlog,
   saveEvent,
   saveExecutive,
@@ -226,9 +227,17 @@ router.put('/settings/fees', async (req, res, next) => {
   }
 });
 
-router.get('/executives', async (_req, res, next) => {
+router.get('/executives', async (req, res, next) => {
   try {
-    res.json(await listExecutives({ includeInactive: true }));
+    res.json(await listExecutives({ includeInactive: true, session: req.query.session || 'all' }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/executives/sessions', async (_req, res, next) => {
+  try {
+    res.json(await listExecutiveSessions());
   } catch (error) {
     next(error);
   }

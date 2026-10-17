@@ -447,10 +447,17 @@ const withExecutiveImage = (item) => {
   return { ...item, image_url: image, image };
 };
 
-export const listExecutives = async ({ includeInactive = false } = {}) => {
-  const rows = await centralGet('executives_list', includeInactive ? { include_inactive: 1 } : {});
+// session: a session like '2026/2027', 'all' (every session) or omitted (the public view:
+// the current session, or the latest session that has executives).
+export const listExecutives = async ({ includeInactive = false, session } = {}) => {
+  const rows = await centralGet('executives_list', {
+    ...(includeInactive ? { include_inactive: 1 } : {}),
+    ...(session ? { session } : {}),
+  });
   return rows.map(withExecutiveImage);
 };
+
+export const listExecutiveSessions = async () => centralGet('executive_sessions');
 
 export const saveExecutive = async (payload, id = null) => {
   await centralPost('executive_save', {
@@ -458,7 +465,7 @@ export const saveExecutive = async (payload, id = null) => {
     image_url: normalizeImagePath(payload.image_url || payload.image),
     id,
   });
-  return listExecutives({ includeInactive: true });
+  return listExecutives({ includeInactive: true, session: payload.session || 'all' });
 };
 
 export const deleteExecutive = async (id) => centralPost('executive_delete', { id });

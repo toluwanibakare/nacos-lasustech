@@ -20,7 +20,7 @@ import BlogCard from "@/components/BlogCard";
 import heroBg from "@/assets/Events/bootcamp_onboarding/PHOTO-2026-04-29-19-36-06.jpg";
 import nacosLogo from "@/assets/nacos_logo.png";
 import lasustechLogo from "@/assets/lasustech_logo.png";
-import { executives as staticExecutives } from "@/data/executives";
+import { useExecutives } from "@/hooks/useExecutives";
 import { events as staticEvents } from "@/data/events";
 
 // Latest Chapter Moments
@@ -52,9 +52,9 @@ const Index = () => {
     return () => window.removeEventListener('storage', checkLogin);
   }, []);
 
-  // Using static data directly from your .ts files as requested
+  // Executives come from the database (with the built-in list as a fallback); events are still the built-in list.
+  const { executives: liveExecutives } = useExecutives();
   const [data] = useState({ 
-    executives: staticExecutives, 
     events: staticEvents 
   });
   const navigate = useNavigate();
@@ -289,8 +289,8 @@ const Index = () => {
             description="Meet the student leaders steering the chapter toward excellence."
           />
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
-            {data.executives.slice(0, 5).map((exec) => (
-              <ExecutiveCard key={exec.id || exec.post} {...exec} />
+            {liveExecutives.slice(0, 5).map((exec) => (
+              <ExecutiveCard key={`${exec.post}-${exec.name}`} {...exec} />
             ))}
           </div>
           <div className="mt-8 text-center text-black">

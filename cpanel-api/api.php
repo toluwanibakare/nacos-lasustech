@@ -1021,9 +1021,34 @@ function text_or_null($value): ?string
 }
 
 if ($method === 'GET' && $action === 'executives_list') {
-    $sql = 'SELECT id, name, post, level, description, image_url, sort_order, is_active FROM executives'
-        . (($_GET['include_inactive'] ?? '') === '1' ? '' : ' WHERE is_active = 1') . ' ORDER BY sort_order ASC, id ASC';
-    $rows = $pdo->query($sql)->fetchAll();
+    // session = '2026/2027' -> that session; 'all' -> every session (admin);
+    // omitted -> the public view: the current session, or the latest session that has executives.
+    $session = trim((string) ($_GET['session'] ?? ''));
+    $includeInactive = ($_GET['include_inactive'] ?? '') === '1';
+    $where = [];
+    $args = [];
+    if ($session === '') {
+        $current = current_session($pdo);
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM executives WHERE session = ? AND is_active = 1');
+        $stmt->execute([$current]);
+        if ((int) $stmt->fetchColumn() > 0) {
+            $session = $current;
+        } else {
+            $latest = $pdo->query('SELECT session FROM executives WHERE is_active = 1 ORDER BY session DESC LIMIT 1')->fetchColumn();
+            $session = $latest ?: $current;
+        }
+    }
+    if ($session !== 'all') {
+        $where[] = 'session = ?';
+        $args[] = $session;
+    }
+    if (!$includeInactive) $where[] = 'is_active = 1';
+    $stmt = $pdo->prepare(
+        'SELECT id, name, post, level, session, description, image_url, sort_order, is_active FROM executives'
+        . ($where ? ' WHERE ' . implode(' AND ', $where) : '') . ' ORDER BY session DESC, sort_order ASC, id ASC'
+    );
+    $stmt->execute($args);
+    $rows = $stmt->fetchAll();
     foreach ($rows as &$r) {
         $r['id'] = (int) $r['id'];
         $r['sort_order'] = (int) $r['sort_order'];
@@ -1032,22 +1057,32 @@ if ($method === 'GET' && $action === 'executives_list') {
     json_out($rows);
 }
 
+if ($method === 'GET' && $action === 'executive_sessions') {
+    $current = current_session($pdo);
+    $sessions = $pdo->query('SELECT DISTINCT session FROM executives ORDER BY session DESC')->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array($current, $sessions, true)) $sessions[] = $current;
+    rsort($sessions);
+    json_out(['current' => $current, 'sessions' => array_values($sessions)]);
+}
+
 if ($action === 'executive_save') {
     need_post($method);
     $in = input();
     $name = trim((string) ($in['name'] ?? ''));
     $post = trim((string) ($in['post'] ?? ''));
     if ($name === '' || $post === '') fail('Name and post are required.');
+    $session = trim((string) ($in['session'] ?? '')) ?: current_session($pdo);
+    if (!preg_match('/^\d{4}\/\d{4}$/', $session)) fail('Session must look like 2026/2027.');
     $values = [
-        $name, $post, trim((string) ($in['level'] ?? '')), text_or_null($in['description'] ?? null),
+        $name, $post, trim((string) ($in['level'] ?? '')), $session, text_or_null($in['description'] ?? null),
         text_or_null($in['image_url'] ?? null), (int) ($in['sort_order'] ?? 0), flag_int($in['is_active'] ?? true),
     ];
     $id = (int) ($in['id'] ?? 0);
     if ($id > 0) {
-        $pdo->prepare('UPDATE executives SET name = ?, post = ?, level = ?, description = ?, image_url = ?, sort_order = ?, is_active = ? WHERE id = ?')
+        $pdo->prepare('UPDATE executives SET name = ?, post = ?, level = ?, session = ?, description = ?, image_url = ?, sort_order = ?, is_active = ? WHERE id = ?')
             ->execute([...$values, $id]);
     } else {
-        $pdo->prepare('INSERT INTO executives (name, post, level, description, image_url, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)')
+        $pdo->prepare('INSERT INTO executives (name, post, level, session, description, image_url, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
             ->execute($values);
         $id = (int) $pdo->lastInsertId();
     }

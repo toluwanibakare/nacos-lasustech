@@ -119,6 +119,7 @@ export interface Executive {
   name: string;
   post: string;
   level: string;
+  session?: string;
   description: string;
   image_url: string;
   sort_order: number;

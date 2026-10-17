@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,8 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { adminFetch } from "@/lib/admin-api";
 import { resolveImageUrl } from "@/lib/api";
-import { AdminDashboard, Executive } from "./types";
-import { AsyncBody, Card, ConfirmDialog, Field, PageHeader } from "./shared";
+import { Executive } from "./types";
+import { AsyncBody, Card, ConfirmDialog, Field, PageHeader, SelectField } from "./shared";
 import { ImageField } from "./ImageField";
 import { useAction } from "./useAction";
 import { useAdminData } from "./utils";
@@ -15,11 +15,18 @@ import { useAdminData } from "./utils";
 const empty: Executive = { id: "", name: "", post: "", level: "", description: "", image_url: "", sort_order: 0, is_active: true };
 
 const Executives = () => {
-  const { data, loading, error, reload } = useAdminData<AdminDashboard | null>("/admin/dashboard", null);
+  // Executives belong to a session; the page opens on the current one.
+  const sessions = useAdminData<{ current: string; sessions: string[] } | null>("/admin/executives/sessions", null);
+  const [picked, setPicked] = useState("");
+  const session = picked || sessions.data?.current || "";
+  const { data: list, loading, error, reload } = useAdminData<Executive[]>(session ? `/admin/executives?session=${encodeURIComponent(session)}` : null, []);
   const { busy, run } = useAction();
   const [form, setForm] = useState<Executive | null>(null);
   const [del, setDel] = useState<Executive | null>(null);
-  const list = data?.executives || [];
+  const sessionOptions = useMemo(
+    () => (sessions.data?.sessions || []).map((s) => ({ value: s, label: s === sessions.data?.current ? `${s} (current)` : s })),
+    [sessions.data],
+  );
   const set = <K extends keyof Executive>(k: K, v: Executive[K]) => setForm((f) => (f ? { ...f, [k]: v } : f));
 
   const save = async () => {
@@ -27,19 +34,25 @@ const Executives = () => {
     const ok = await run(async () => {
       const method = form.id ? "PUT" : "POST";
       const endpoint = form.id ? `/admin/executives/${form.id}` : "/admin/executives";
-      await adminFetch(endpoint, { method, body: JSON.stringify(form) });
+      await adminFetch(endpoint, { method, body: JSON.stringify({ ...form, session: form.session || session }) });
     }, form.id ? "Executive updated." : "Executive added.");
     if (ok) {
       setForm(null);
       reload();
+      sessions.reload();
     }
   };
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Executives" description="People shown on the public executives page." actions={<Button className="rounded-full" onClick={() => setForm({ ...empty })}><Plus className="mr-1.5 h-4 w-4" />Add executive</Button>} />
+      <PageHeader title="Executives" description="The executive council for each session. Add the new council when it is announced; earlier sessions are kept." actions={<Button className="rounded-full" disabled={!session} onClick={() => setForm({ ...empty, session })}><Plus className="mr-1.5 h-4 w-4" />Add executive</Button>} />
       <Card>
-        <AsyncBody loading={loading} error={error} empty={list.length === 0} emptyTitle="No executives yet" onRetry={reload}>
+        {sessionOptions.length > 0 && (
+          <div className="mb-4">
+            <SelectField label="Session" value={session} onChange={setPicked} options={sessionOptions} />
+          </div>
+        )}
+        <AsyncBody loading={loading || sessions.loading} error={error || sessions.error} empty={list.length === 0} emptyTitle={`No executives for ${session || "this session"} yet`} emptyDescription="Use Add executive to build this session's council." onRetry={() => { sessions.reload(); reload(); }}>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {list.map((item) => (
               <div key={item.id} className="flex gap-3 rounded-2xl border border-border p-3">
