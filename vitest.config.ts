@@ -4,6 +4,7 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
+  assetsInclude: ["**/*.JPG"], // same as vite.config.ts
   test: {
     environment: "jsdom",
     globals: true,

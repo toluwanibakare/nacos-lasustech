@@ -15,6 +15,8 @@ import studentRoutes from './routes/student.routes.js';
 import contentRoutes from './routes/content.routes.js';
 import servicesRoutes from './routes/services.routes.js';
 import contactRoutes from './routes/contact.routes.js';
+import fresherRoutes from './routes/fresher.routes.js';
+import hocRoutes from './routes/hoc.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import BirthdayService from './services/birthday.service.js';
 
@@ -68,6 +70,13 @@ const authLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
   message: 'Too many login attempts. Take a break and try again later.'
+});
+
+// Freshers sign up from shared campus networks, so this is looser than authLimiter.
+const fresherLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 40,
+  message: 'Too many attempts. Please wait a few minutes and try again.'
 });
 
 app.use(helmet({ crossOriginResourcePolicy: false }));
@@ -156,6 +165,8 @@ app.get('/api/ping-central', async (req, res) => {
 // Register all API routes
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/admin-auth', authLimiter, adminAuthRoutes);
+app.use('/api/fresher', fresherLimiter, fresherRoutes);
+app.use('/api/hoc', hocRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/services', servicesRoutes);
@@ -167,6 +178,11 @@ app.use('/api/payments', paymentRoutes);
  * GLOBAL ERROR HANDLER
  */
 app.use((err, req, res, _next) => {
+  // Errors from the central PHP API carry a readable message (validation, not found, ...).
+  if (err.response?.data?.message && err.response.status < 500) {
+    res.status(err.response.status).json({ message: err.response.data.message });
+    return;
+  }
   console.error('🔥 CRITICAL ERROR:', err.stack);
   res.status(500).json({
     error: 'Internal Server Error',

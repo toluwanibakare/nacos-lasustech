@@ -1,4 +1,5 @@
 import { useState } from "react";
+import FresherRegistration, { LoginResult } from "@/components/FresherRegistration";
 import { LogIn, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,17 @@ interface LoginModalProps {
   redirectTab?: string;
 }
 
+type LoginMode = "fresher" | "stalite";
+
+const readMode = (): LoginMode | null => {
+  try {
+    const m = localStorage.getItem("login_mode");
+    return m === "fresher" || m === "stalite" ? m : null;
+  } catch {
+    return null;
+  }
+};
+
 const LoginModal = ({ open, onClose, redirectTab }: LoginModalProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -31,6 +43,30 @@ const LoginModal = ({ open, onClose, redirectTab }: LoginModalProps) => {
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mode, setModeState] = useState<LoginMode | null>(readMode);
+
+  const setMode = (m: LoginMode) => {
+    setModeState(m);
+    setView("login");
+    try {
+      localStorage.setItem("login_mode", m);
+    } catch {
+      // storage unavailable
+    }
+  };
+
+  const completeLogin = (data: LoginResult) => {
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data.user));
+    toast({ title: "Login successful", description: "Welcome back to the portal!" });
+    onClose();
+    if (redirectTab) {
+      navigate("/dashboard", { state: { tab: redirectTab } });
+    } else {
+      navigate("/dashboard");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,24 +82,13 @@ const LoginModal = ({ open, onClose, redirectTab }: LoginModalProps) => {
         }),
       });
 
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      
-      toast({ title: "Login successful", description: "Welcome back to the portal!" });
       setPassword("");
       setMatric("");
-      onClose();
-      
-      if (redirectTab) {
-        navigate("/dashboard", { state: { tab: redirectTab } });
-      } else {
-        navigate("/dashboard");
-      }
+      completeLogin(data);
     } catch (error: any) {
       toast({ 
         title: "Login failed", 
-        description: "Login credentials invalid or server error.",
+        description: error?.message || "Login credentials invalid or server error.",
         variant: "destructive"
       });
     } finally {
@@ -146,7 +171,37 @@ const LoginModal = ({ open, onClose, redirectTab }: LoginModalProps) => {
           </DialogDescription>
         </DialogHeader>
 
-        {view === "login" ? (
+        {view === "login" && (
+          <div className="mt-2">
+            {mode === null && (
+              <p className="mb-3 text-center text-sm font-semibold text-foreground">Are you a Fresher or a Stalite?</p>
+            )}
+            <div className="grid grid-cols-2 gap-1 rounded-full bg-muted/50 p-1">
+              {([
+                ["fresher", "I'm a Fresher"],
+                ["stalite", "I'm a Stalite"],
+              ] as const).map(([m, label]) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className={`rounded-full py-2 text-xs font-bold transition-all ${
+                    mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {mode === "fresher" && (
+              <p className="mt-2 text-center text-[10px] text-muted-foreground">New 100L student with no matric number yet.</p>
+            )}
+          </div>
+        )}
+
+        {view === "login" && mode === null ? null : view === "login" && mode === "fresher" ? (
+          <FresherRegistration onLoggedIn={completeLogin} onSwitchToStalite={() => setMode("stalite")} />
+        ) : view === "login" ? (
           <form onSubmit={handleSubmit} className="mt-4 space-y-5">
             <div className="space-y-2">
               <div className="flex justify-between items-center">
@@ -187,7 +242,7 @@ const LoginModal = ({ open, onClose, redirectTab }: LoginModalProps) => {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              <p className="text-[10px] text-muted-foreground ml-1">Default password is your surname in lowercase</p>
+              <p className="text-[10px] text-muted-foreground ml-1">Default password is your first name in lowercase</p>
             </div>
             
             <Button disabled={loading} type="submit" className="w-full h-12 rounded-xl font-bold shadow-lg shadow-primary/20 transition-all active:scale-[0.98]">

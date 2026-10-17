@@ -61,7 +61,7 @@ router.post('/login', async (req, res) => {
       const role = user.post || user.role || user.position || user.rank || 'student';
 
       const token = jwt.sign(
-        { id: user.id, matric, name: user.full_name || user.name, email: user.email, role },
+        { id: user.id, account_type: 'student', matric, name: user.full_name || user.name, email: user.email, role },
         process.env.JWT_SECRET || 'nacos_secret_2025',
         { expiresIn: '30d' }
       );
@@ -71,6 +71,7 @@ router.post('/login', async (req, res) => {
         token,
         user: {
           id: user.id,
+          account_type: 'student',
           name: user.full_name || user.name,
           matric,
           email: user.email,

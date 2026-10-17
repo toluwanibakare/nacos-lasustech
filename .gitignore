@@ -32,3 +32,7 @@ backend/.env
 backend/*.zip
 *.txt
 *.mjs
+
+# Student data and the live PHP config (personal data + DB password). Only the SQL migrations are tracked.
+id-card/*
+!id-card/sql/
