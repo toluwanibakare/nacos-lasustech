@@ -92,6 +92,10 @@ router.post('/initialize', protect, async (req, res) => {
         res.status(409).json({ message: 'This item is no longer available.' });
         return;
       }
+      if (!(Number(item.price) > 0)) {
+        res.status(400).json({ message: 'This material is free. Download it from your Course Materials.' });
+        return;
+      }
       // Freshers are 100L; students' level and department come from the database, not the token.
       let level = '100';
       let department = null;

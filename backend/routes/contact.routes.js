@@ -3,7 +3,7 @@ import axios from 'axios';
 import emailService from '../services/email.service.js';
 
 const router = Router();
-const ID_SYSTEM_API = 'https://nacosid.tmb.it.com/api.php';
+const ID_SYSTEM_API = process.env.CENTRAL_API_URL || 'https://nacosid.tmb.it.com/api.php';
 const API_KEY = process.env.ID_SYSTEM_API_KEY || 'NACOS_LASUSTECH_SECURE_API_KEY';
 
 /**

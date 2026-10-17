@@ -23,6 +23,7 @@ const PAGE_BY_SEGMENT = {
   payments: 'payments',
   'hoc-items': 'payments',
   email: 'email',
+  'email-check': 'email',
   settings: 'settings',
   executives: 'executives',
   events: 'events',

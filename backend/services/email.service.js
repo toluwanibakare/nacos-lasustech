@@ -4,10 +4,18 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Mail settings come from the environment, so the provider can change without touching code.
+// Some hosts (for example Render's free plan) block the usual mail ports 25, 465 and 587; a provider
+// that also listens on 2525 (Brevo, SendGrid, Mailgun) works there.
+const SMTP_PORT = Number(process.env.SMTP_PORT) || 587;
+const SMTP_SECURE = process.env.SMTP_SECURE
+  ? process.env.SMTP_SECURE === 'true'
+  : SMTP_PORT === 465 || SMTP_PORT === 2465; // implicit TLS only on those ports; others use STARTTLS
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: 587,
-  secure: false, // STARTTLS on 587, avoids IPv6 issues that plague port 465
+  port: SMTP_PORT,
+  secure: SMTP_SECURE, // STARTTLS on 587/2525/2587, avoids IPv6 issues that plague port 465
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
@@ -34,6 +42,12 @@ transporter.verify((error, success) => {
 });
 
 const APP_NAME = 'NACOS LASUSTECH';
+
+/**
+ * The From header. MAIL_FROM is the address the provider has verified as a sender; when it is not set the
+ * SMTP login is used (fine for Gmail, where the login is the address).
+ */
+const mailFrom = (label) => `"${label}" <${process.env.MAIL_FROM || process.env.SMTP_USER}>`;
 const PRIMARY_COLOR = '#169B2D';
 const SECONDARY_COLOR = '#1F5FAF';
 
@@ -65,7 +79,7 @@ const emailFooter = `
  */
 export const sendContactConfirmation = async (userEmail, userName) => {
   const mailOptions = {
-    from: `"${APP_NAME}" <${process.env.SMTP_USER}>`,
+    from: mailFrom(`${APP_NAME}`),
     to: userEmail,
     subject: 'Message Received - NACOS LASUSTECH',
     text: `Hello ${userName},\n\nThank you for reaching out to the NACOS LASUSTECH Chapter. We've received your message and our team is already looking into it.\n\nYou'll hear from us as soon as possible.\n\nBest regards,\nThe NACOS Executive Council`,
@@ -93,7 +107,7 @@ export const sendContactConfirmation = async (userEmail, userName) => {
 export const sendContactNotificationToAdmin = async (contactData) => {
   const { full_name, email, subject, message } = contactData;
   const mailOptions = {
-    from: `"${APP_NAME} Portal" <${process.env.SMTP_USER}>`,
+    from: mailFrom(`${APP_NAME} Portal`),
     to: process.env.ADMIN_EMAIL,
     subject: `New Message: ${subject}`,
     text: `New Contact Submission\n\nName: ${full_name}\nEmail: ${email}\nSubject: ${subject}\n\nMessage:\n${message}`,
@@ -123,7 +137,7 @@ export const sendContactNotificationToAdmin = async (contactData) => {
 export const sendPaymentReceipt = async (userEmail, userName, paymentData) => {
   const { amount, reference, type, date } = paymentData;
   const mailOptions = {
-    from: `"${APP_NAME} Finance" <${process.env.SMTP_USER}>`,
+    from: mailFrom(`${APP_NAME} Finance`),
     to: userEmail,
     subject: 'Payment Receipt',
     text: `Hello ${userName},\n\nPayment Successful!\n\nReference: ${reference}\nType: ${type}\nAmount: ₦${parseFloat(amount).toLocaleString()}\nDate: ${date || new Date().toLocaleDateString()}\n\nThank you.`,
@@ -169,7 +183,7 @@ export const sendPaymentNotificationToAdmin = async (paymentData, userDetails) =
   const { full_name, matric_number } = userDetails;
   
   const mailOptions = {
-    from: `"${APP_NAME} Portal" <${process.env.SMTP_USER}>`,
+    from: mailFrom(`${APP_NAME} Portal`),
     to: process.env.ADMIN_EMAIL,
     subject: `Payment Alert: ${full_name}`,
     text: `Payment Notification\n\nStudent: ${full_name} (${matric_number})\nAmount: ₦${parseFloat(amount).toLocaleString()}\nReference: ${reference}`,
@@ -196,7 +210,7 @@ export const sendPaymentNotificationToAdmin = async (paymentData, userDetails) =
  */
 export const sendPasswordReset = async (userEmail, userName, tempPassword) => {
   const mailOptions = {
-    from: `"${APP_NAME}" <${process.env.SMTP_USER}>`,
+    from: mailFrom(`${APP_NAME}`),
     to: userEmail,
     subject: 'Password Reset Request',
     text: `Hello ${userName},\n\nWe received a request to reset your NACOS Portal password. Your temporary password is: ${tempPassword}\n\nPlease login and change your password immediately.\n\nIf you did not request this, please contact the admin.`,
@@ -224,7 +238,7 @@ export const sendPasswordReset = async (userEmail, userName, tempPassword) => {
  */
 export const sendOtp = async (userEmail, userName, otpCode) => {
   const mailOptions = {
-    from: `"${APP_NAME}" <${process.env.SMTP_USER}>`,
+    from: mailFrom(`${APP_NAME}`),
     to: userEmail,
     subject: `Your Verification Code: ${otpCode}`,
     html: `
@@ -237,7 +251,7 @@ export const sendOtp = async (userEmail, userName, otpCode) => {
         <p style="margin: 10px 0 0 0; font-family: monospace; font-size: 32px; color: ${PRIMARY_COLOR}; font-weight: bold; letter-spacing: 5px;">${otpCode}</p>
       </div>
       
-      <p style="color: #475569; font-size: 14px; line-height: 1.6;">This code will expire in 10 minutes. If you did not request this code, please ignore this email.</p>
+      <p style="color: #475569; font-size: 14px; line-height: 1.6;">This code will expire in 15 minutes. If you did not request this code, please ignore this email.</p>
       ${emailFooter}
     `,
   };
@@ -250,7 +264,7 @@ export const sendOtp = async (userEmail, userName, otpCode) => {
  */
 export const sendVerificationCode = async (userEmail, userName, otpCode) => {
   const mailOptions = {
-    from: `"${APP_NAME}" <${process.env.SMTP_USER}>`,
+    from: mailFrom(`${APP_NAME}`),
     to: userEmail,
     subject: `Verify your email: ${otpCode}`,
     html: `
@@ -276,7 +290,7 @@ export const sendVerificationCode = async (userEmail, userName, otpCode) => {
  */
 export const sendCustomEmail = async (to, subject, htmlContent) => {
   const mailOptions = {
-    from: `"${APP_NAME}" <${process.env.SMTP_USER}>`,
+    from: mailFrom(`${APP_NAME}`),
     to,
     subject,
     html: `
@@ -289,6 +303,26 @@ export const sendCustomEmail = async (to, subject, htmlContent) => {
   return transporter.sendMail(mailOptions);
 };
 
+/** Resolves if the mail server accepts our connection and login; rejects with the reason otherwise. */
+export const verifyConnection = () => transporter.verify();
+
+/** Turns a mail error into something a person can act on. */
+export const friendlyMailError = (error) => {
+  const code = error?.code;
+  if (['ETIMEDOUT', 'ESOCKET', 'ECONNECTION', 'ECONNREFUSED', 'ENETUNREACH', 'EDNS'].includes(code)) {
+    return `Could not reach the mail server on port ${SMTP_PORT}. The host may be blocking that port (Render's free plan blocks 25, 465 and 587); use a provider on port 2525.`;
+  }
+  if (code === 'EAUTH') return 'The mail server rejected the login. Check SMTP_USER and SMTP_PASS.';
+  if (code === 'EENVELOPE') return 'The mail server did not accept the sender or recipient address. Check MAIL_FROM is a verified sender.';
+  return error?.message || 'The mail could not be sent.';
+};
+
+export const mailSettingsSummary = () => ({
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: SMTP_PORT,
+  from: process.env.MAIL_FROM || process.env.SMTP_USER || null,
+});
+
 export default {
   sendContactConfirmation,
   sendContactNotificationToAdmin,
@@ -297,5 +331,8 @@ export default {
   sendPasswordReset,
   sendOtp,
   sendVerificationCode,
-  sendCustomEmail
+  sendCustomEmail,
+  verifyConnection,
+  friendlyMailError,
+  mailSettingsSummary,
 };

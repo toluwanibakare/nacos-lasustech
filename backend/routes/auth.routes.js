@@ -1,12 +1,11 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
-import nodemailer from 'nodemailer';
-import dns from 'dns';
 import protect from '../middleware/auth.middleware.js';
+import emailService from '../services/email.service.js';
 
 const router = Router();
-const ID_SYSTEM_API = 'https://nacosid.tmb.it.com/api.php';
+const ID_SYSTEM_API = process.env.CENTRAL_API_URL || 'https://nacosid.tmb.it.com/api.php';
 const API_KEY = process.env.ID_SYSTEM_API_KEY || 'NACOS_LASUSTECH_SECURE_API_KEY';
 
 /**
@@ -14,26 +13,6 @@ const API_KEY = process.env.ID_SYSTEM_API_KEY || 'NACOS_LASUSTECH_SECURE_API_KEY
  * ---------------------------------------------------------
  * These routes act as a secure bridge to the central PHP system.
  */
-
-// ── SMTP transporter: port 587 STARTTLS + dnsLookup IPv4 to avoid ENETUNREACH
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-  dnsLookup: (hostname, options, callback) => {
-    dns.lookup(hostname, { family: 4 }, callback);
-  },
-  connectionTimeout: 15000,
-  greetingTimeout: 15000,
-  socketTimeout: 20000,
-});
 
 // Login Proxy
 router.post('/login', async (req, res) => {
@@ -117,34 +96,15 @@ router.post('/forgot-password', async (req, res) => {
     if (status === 'success' && otp) {
       console.log(`Attempting to send OTP to: ${email}`);
 
-      const mailOptions = {
-        from: `"NACOS LASUSTECH" <${process.env.SMTP_USER}>`,
-        to: email,
-        subject: 'Password Reset Verification Code',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
-            <h2 style="color: #1e3a8a; text-align: center;">Identity Verification</h2>
-            <p>Hello,</p>
-            <p>You requested to reset your password for the NACOS LASUSTECH Student Portal. Please use the verification code below to proceed:</p>
-            <div style="background-color: #f3f4f6; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1e3a8a; border-radius: 8px; margin: 20px 0;">
-              ${otp}
-            </div>
-            <p style="font-size: 14px; color: #6b7280;">This code will expire in 15 minutes. If you did not request this, please ignore this email or contact support.</p>
-            <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
-            <p style="text-align: center; font-size: 12px; color: #9ca3af;">&copy; ${new Date().getFullYear()} NACOS LASUSTECH Chapter. All rights reserved.</p>
-          </div>
-        `,
-      };
-
       try {
-        await transporter.sendMail(mailOptions);
+        await emailService.sendOtp(email, 'there', otp);
         console.log(`OTP Email sent successfully to ${email}`);
         res.json({ status: 'success', message: 'OTP sent successfully to your registered email.' });
       } catch (mailError) {
         console.error('SMTP Error:', mailError.message);
         res.status(500).json({
           message: 'Error sending verification email. Our mail server might be down.',
-          details: mailError.message,
+          details: emailService.friendlyMailError(mailError),
         });
       }
     } else {

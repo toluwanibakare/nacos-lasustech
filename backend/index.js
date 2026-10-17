@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import { resumeUnfinishedCampaigns } from './services/campaign.service.js';
 import { generalLimiter, ipBackstop, failedAttempts, emailsPerAccount } from './middleware/rate-limits.js';
 import axios from 'axios';
 import path from 'path';
@@ -118,7 +119,7 @@ app.get('/api/cron/birthday', async (req, res) => {
 app.get('/api/ping-central', async (req, res) => {
   try {
     const start = Date.now();
-    const response = await axios.post('https://nacosid.tmb.it.com/api.php?action=login',
+    const response = await axios.post(`${process.env.CENTRAL_API_URL || 'https://nacosid.tmb.it.com/api.php'}?action=login`,
       { matric_number: '000', password: '000' },
       {
         timeout: 5000,
@@ -196,6 +197,9 @@ app.use((err, req, res, _next) => {
 if (!process.env.VERCEL) {
   // Run birthday check once on startup (for cPanel / local)
   BirthdayService.start();
+
+  // Carry on with any email campaign that was still sending when the server last stopped.
+  setTimeout(() => resumeUnfinishedCampaigns().catch((e) => console.warn('Could not resume campaigns:', e.message)), 8000);
 
   app.listen(PORT, () => {
     console.log(`

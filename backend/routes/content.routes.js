@@ -7,7 +7,7 @@ const router = Router();
 const headers = { 'X-API-KEY': process.env.ID_SYSTEM_API_KEY || 'NACOS_LASUSTECH_SECURE_API_KEY' };
 
 const fetchRemote = async (action) => {
-  const response = await axios.get(`https://nacosid.tmb.it.com/api.php?action=${action}`, {
+  const response = await axios.get(`${process.env.CENTRAL_API_URL || 'https://nacosid.tmb.it.com/api.php'}?action=${action}`, {
     headers,
     timeout: 12000,
   });

@@ -10,6 +10,9 @@ import axios from 'axios';
 const centralUrl = () => process.env.CENTRAL_API_URL || 'https://nacosid.tmb.it.com/api.php';
 const apiKey = () => process.env.ID_SYSTEM_API_KEY || 'NACOS_LASUSTECH_SECURE_API_KEY';
 
+/** Where files stored on the central server (photos, library files) are publicly served from. */
+export const centralPublicUrl = () => centralUrl().replace(/\/api\.php.*$/, '').replace(/\/$/, '');
+
 export const centralGet = async (action, params = {}) => {
   const response = await axios.get(centralUrl(), {
     params: { action, ...params },

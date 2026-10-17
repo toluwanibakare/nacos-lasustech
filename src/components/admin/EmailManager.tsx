@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Send } from "lucide-react";
+import { Loader2, MailCheck, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,8 +26,37 @@ const audienceText = (type: string, level?: string | null, dept?: string | null)
   return extra ? `${base} (${extra})` : base;
 };
 
+interface EmailCheck {
+  ok: boolean;
+  host: string;
+  port: number;
+  from: string | null;
+  error?: string;
+}
+
 const EmailManager = () => {
   const { toast } = useToast();
+  const [checking, setChecking] = useState(false);
+  const [check, setCheck] = useState<EmailCheck | null>(null);
+
+  // Asks the server to connect to its mail provider, so a wrong password or a blocked port shows up here
+  // instead of as a failed code on a student's phone.
+  const testConnection = async () => {
+    setChecking(true);
+    try {
+      const result: EmailCheck = await adminFetch("/admin/email-check");
+      setCheck(result);
+      toast({
+        title: result.ok ? "Email is working" : "Email is not working",
+        description: result.ok ? `Connected to ${result.host}.` : result.error,
+        variant: result.ok ? undefined : "destructive",
+      });
+    } catch (err) {
+      toast({ title: "Could not run the check", description: errMessage(err), variant: "destructive" });
+    } finally {
+      setChecking(false);
+    }
+  };
   const history = useAdminData<Campaign[]>("/admin/email/campaigns", []);
   const fees = useAdminData<FeeSettings | null>("/admin/settings/fees", null);
   const departments = fees.data?.departments || [];
@@ -108,7 +137,24 @@ const EmailManager = () => {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Email" description="Send announcements to students. Only people with an email on record receive them." />
+      <PageHeader
+        title="Email"
+        description="Send announcements to students. Only people with an email on record receive them."
+        actions={
+          <Button variant="outline" className="rounded-full" onClick={testConnection} disabled={checking}>
+            {checking ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <MailCheck className="mr-1.5 h-4 w-4" />}
+            Test email connection
+          </Button>
+        }
+      />
+      {check && (
+        <div className={`rounded-2xl border p-4 text-sm ${check.ok ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-900"}`}>
+          <p className="font-semibold">{check.ok ? "The mail server accepted our connection and login." : "The mail server could not be used."}</p>
+          <p className="mt-1 break-words text-xs">
+            Server {check.host}, port {check.port}{check.from ? `, sending as ${check.from}` : ""}.{check.error ? ` ${check.error}` : ""}
+          </p>
+        </div>
+      )}
       <Card title="Compose">
         <div className="space-y-4">
           <Field label="Subject">

@@ -1108,12 +1108,12 @@ const Dashboard = () => {
         </main>
 
         {/* Mobile Bottom Navigation - Moved to absolute bottom for visibility */}
-        <nav className="fixed bottom-0 left-0 right-0 z-[100] flex w-full items-center gap-1 overflow-x-auto border-t border-border bg-background/95 px-2 py-3 pb-safe backdrop-blur-lg lg:hidden shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+        <nav className="fixed bottom-0 left-0 right-0 z-40 flex w-full items-center gap-1 overflow-x-auto border-t border-border bg-background/95 px-2 py-3 pb-safe backdrop-blur-lg lg:hidden shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
           {navItems.map(({ id, short, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
-              className={`flex min-w-[64px] flex-1 shrink-0 flex-col items-center gap-1 px-3 py-1 transition-all duration-300 ${
+              className={`flex min-w-[52px] flex-1 shrink-0 flex-col items-center gap-1 px-1 py-1 transition-all duration-300 ${
                 activeTab === id ? "text-primary scale-110" : "text-muted-foreground"
               }`}
             >

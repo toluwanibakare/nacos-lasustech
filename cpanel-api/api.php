@@ -706,11 +706,38 @@ if ($method === 'GET' && $action === 'hoc_profile') {
 
 // ─── HOC items (books / manuals / workbooks) ─────────────────────────────────
 
+// Free library files (a file is uploaded) and paid items (no file; collected from the HOC).
+const MATERIAL_FREE_KINDS = ['notes', 'pdf', 'past_questions'];
+const MATERIAL_PAID_KINDS = ['manual', 'workbook', 'textbook'];
+const MATERIAL_MAX_BYTES = 15 * 1024 * 1024;
+const MATERIAL_MIME_EXT = [
+    'application/pdf' => 'pdf',
+    'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp',
+    'text/plain' => 'txt',
+    'application/msword' => 'doc',
+    'application/vnd.ms-powerpoint' => 'ppt',
+    'application/vnd.ms-excel' => 'xls',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation' => 'pptx',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
+];
+// Office files are often detected as a generic zip / OLE container, so for those the extension decides.
+const MATERIAL_OFFICE_EXT = ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'];
+const MATERIAL_GENERIC_MIMES = ['application/zip', 'application/octet-stream', 'application/x-ole-storage', 'application/CDFV2', 'application/vnd.ms-office', 'application/x-zip-compressed'];
+
 function hoc_item_view(array $row): array
 {
     $row['id'] = (int) $row['id'];
     $row['price'] = (float) $row['price'];
+    $row['file_size'] = isset($row['file_size']) ? (int) $row['file_size'] : null;
     return $row;
+}
+
+function delete_material_file(?string $path): void
+{
+    if (!$path || strpos($path, 'uploads/materials/') !== 0) return;
+    $full = __DIR__ . '/' . $path;
+    if (is_file($full)) @unlink($full);
 }
 
 if ($method === 'GET' && $action === 'hoc_items_list') {
@@ -718,16 +745,21 @@ if ($method === 'GET' && $action === 'hoc_items_list') {
     if (!in_array($level, ['100', '200', '300', '400'], true)) fail('Select a valid level.');
     $includeArchived = ($_GET['include_archived'] ?? '') === '1';
 
+    // An HOC only manages items for their own department (items for "every department" are also shown).
+    $deptFilter = trim((string) ($_GET['department'] ?? ''));
     $sql = "SELECT h.*,
               (SELECT COUNT(*) FROM payments p WHERE p.hoc_item_id = h.id AND p.status = 'success') AS buyers,
-              (SELECT COALESCE(SUM(p.amount), 0) FROM payments p WHERE p.hoc_item_id = h.id AND p.status = 'success') AS revenue
-            FROM hoc_items h WHERE h.level = ?" . ($includeArchived ? '' : " AND h.status = 'active'") . ' ORDER BY h.id DESC';
+              (SELECT COALESCE(SUM(p.amount), 0) FROM payments p WHERE p.hoc_item_id = h.id AND p.status = 'success') AS revenue,
+              (SELECT COUNT(*) FROM payments p WHERE p.hoc_item_id = h.id AND p.status = 'success' AND p.received_at IS NOT NULL) AS received_count
+            FROM hoc_items h WHERE h.level = ?" . ($includeArchived ? '' : " AND h.status = 'active'")
+            . ($deptFilter !== '' ? ' AND (h.department IS NULL OR h.department = ?)' : '') . ' ORDER BY h.id DESC';
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$level]);
+    $stmt->execute($deptFilter !== '' ? [$level, $deptFilter] : [$level]);
     $items = $stmt->fetchAll();
 
     // Optional: mark which items this person has already paid for.
     $paid = [];
+    $receivedIds = [];
     if (!empty($_GET['matric']) || !empty($_GET['fresher_id'])) {
         $person = resolve_person($pdo, [
             'account_type' => $_GET['account_type'] ?? 'student',
@@ -735,15 +767,24 @@ if ($method === 'GET' && $action === 'hoc_items_list') {
             'fresher_id' => $_GET['fresher_id'] ?? null,
         ]);
         [$col, $pid] = person_key($person);
-        $stmt = $pdo->prepare("SELECT DISTINCT hoc_item_id FROM payments WHERE $col = ? AND status = 'success' AND hoc_item_id IS NOT NULL");
+        $stmt = $pdo->prepare("SELECT hoc_item_id, received_at FROM payments WHERE $col = ? AND status = 'success' AND hoc_item_id IS NOT NULL");
         $stmt->execute([$pid]);
-        $paid = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+        foreach ($stmt->fetchAll() as $pay) {
+            $paid[] = (int) $pay['hoc_item_id'];
+            if ($pay['received_at'] !== null) $receivedIds[] = (int) $pay['hoc_item_id'];
+        }
+
+        // A student only sees materials for their own department (or ones meant for every department).
+        $myDept = $person['row']['department'] ?? null;
+        $items = array_values(array_filter($items, static fn(array $i): bool => $i['department'] === null || $i['department'] === $myDept));
     }
     foreach ($items as &$item) {
         $item = hoc_item_view($item);
         $item['buyers'] = (int) $item['buyers'];
         $item['revenue'] = (float) $item['revenue'];
+        $item['received_count'] = (int) $item['received_count'];
         $item['paid'] = in_array($item['id'], $paid, true);
+        $item['received'] = in_array($item['id'], $receivedIds, true);
     }
     json_out($items);
 }
@@ -756,29 +797,94 @@ if ($method === 'GET' && $action === 'hoc_item_get') {
     json_out(hoc_item_view($item));
 }
 
+if ($action === 'hoc_file_upload') {
+    need_post($method);
+    $file = $_FILES['file'] ?? null;
+    if (!$file || ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) fail('Choose a file to upload.');
+    if ($file['error'] === UPLOAD_ERR_INI_SIZE || $file['error'] === UPLOAD_ERR_FORM_SIZE) fail('That file is too large. The limit is 15MB.');
+    if ($file['error'] !== UPLOAD_ERR_OK) fail('The upload failed. Please try again.');
+    if ((int) $file['size'] > MATERIAL_MAX_BYTES) fail('That file is too large. The limit is 15MB.');
+
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+    $clientExt = strtolower(pathinfo((string) $file['name'], PATHINFO_EXTENSION));
+    if (isset(MATERIAL_MIME_EXT[$mime])) {
+        $ext = MATERIAL_MIME_EXT[$mime];
+    } elseif (in_array($clientExt, MATERIAL_OFFICE_EXT, true) && in_array($mime, MATERIAL_GENERIC_MIMES, true)) {
+        $ext = $clientExt;
+    } else {
+        fail('That file type is not allowed. Use PDF, Word, PowerPoint, Excel, text or an image.');
+    }
+
+    $dir = __DIR__ . '/uploads/materials';
+    if (!is_dir($dir) && !mkdir($dir, 0755, true)) fail('Could not store the file.', 500);
+    // Files are reachable only by their (unguessable) link; the folder itself cannot be listed.
+    if (!is_file("$dir/.htaccess")) @file_put_contents("$dir/.htaccess", "Options -Indexes\n");
+    $name = 'm' . bin2hex(random_bytes(10)) . '.' . $ext;
+    if (!move_uploaded_file($file['tmp_name'], "$dir/$name")) fail('Could not store the file.', 500);
+
+    $clean = preg_replace('/[^A-Za-z0-9._ ()-]+/', '_', basename((string) $file['name']));
+    json_out([
+        'file_path' => "uploads/materials/$name",
+        'file_name' => mb_substr($clean !== '' ? $clean : "file.$ext", 0, 200),
+        'file_size' => (int) $file['size'],
+        'file_type' => $mime,
+    ]);
+}
+
 if ($action === 'hoc_item_save') {
     need_post($method);
     $in = input();
     $level = (string) ($in['level'] ?? '');
     if (!in_array($level, ['100', '200', '300', '400'], true)) fail('Select a valid level.');
     $title = trim((string) ($in['title'] ?? ''));
-    if ($title === '' || mb_strlen($title) > 255) fail('Enter the item name.');
-    if (!is_numeric($in['price'] ?? null) || (float) $in['price'] <= 0) fail('Enter a price above zero.');
+    if ($title === '' || mb_strlen($title) > 255) fail('Enter a title.');
     $dept = trim((string) ($in['department'] ?? ''));
     if ($dept !== '' && !in_array($dept, allowed_departments($pdo), true)) fail('Select a valid department.');
+
+    $kind = (string) ($in['kind'] ?? '');
+    $isFree = in_array($kind, MATERIAL_FREE_KINDS, true);
+    $isPaid = in_array($kind, MATERIAL_PAID_KINDS, true);
+    if (!$isFree && !$isPaid) fail('Choose what kind of material this is.');
+
+    $id = (int) ($in['id'] ?? 0);
+    $existing = null;
+    if ($id > 0) {
+        $stmt = $pdo->prepare('SELECT * FROM hoc_items WHERE id = ?');
+        $stmt->execute([$id]);
+        $existing = $stmt->fetch();
+        if (!$existing) fail('Item not found.', 404);
+        if ($existing['kind'] !== $kind) fail('The type of a material cannot be changed. Post a new one instead.');
+    }
+
+    if ($isPaid) {
+        if (!is_numeric($in['price'] ?? null) || (float) $in['price'] <= 0) fail('Enter a price above zero.');
+        $price = (float) $in['price'];
+        $file = ['path' => null, 'name' => null, 'size' => null, 'type' => null];   // paid items carry no file
+    } else {
+        $price = 0.0;                                                                // library files are free
+        $path = trim((string) ($in['file_path'] ?? ''));
+        if ($path !== '' && strpos($path, 'uploads/materials/') !== 0) fail('Invalid file.');
+        if ($path === '' && $existing) {
+            $file = ['path' => $existing['file_path'], 'name' => $existing['file_name'], 'size' => $existing['file_size'], 'type' => $existing['file_type']];
+        } elseif ($path === '') {
+            fail('Upload the file for this material.');
+        } else {
+            $file = ['path' => $path, 'name' => trim((string) ($in['file_name'] ?? '')) ?: null, 'size' => (int) ($in['file_size'] ?? 0) ?: null, 'type' => trim((string) ($in['file_type'] ?? '')) ?: null];
+        }
+    }
+
     $values = [
-        $level, $dept !== '' ? $dept : null, $title,
+        $level, $dept !== '' ? $dept : null, $kind, $title,
         trim((string) ($in['course_code'] ?? '')) ?: null,
         trim((string) ($in['description'] ?? '')) ?: null,
-        (float) $in['price'],
+        $file['path'], $file['name'], $file['size'], $file['type'], $price,
     ];
-    $id = (int) ($in['id'] ?? 0);
-    if ($id > 0) {
-        // Editing never changes who owns the item or its level's sales history.
-        $pdo->prepare('UPDATE hoc_items SET level = ?, department = ?, title = ?, course_code = ?, description = ?, price = ? WHERE id = ?')
+    if ($existing) {
+        $pdo->prepare('UPDATE hoc_items SET level = ?, department = ?, kind = ?, title = ?, course_code = ?, description = ?, file_path = ?, file_name = ?, file_size = ?, file_type = ?, price = ? WHERE id = ?')
             ->execute([...$values, $id]);
+        if ($isFree && $existing['file_path'] && $existing['file_path'] !== $file['path']) delete_material_file($existing['file_path']);
     } else {
-        $pdo->prepare('INSERT INTO hoc_items (level, department, title, course_code, description, price, session, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        $pdo->prepare('INSERT INTO hoc_items (level, department, kind, title, course_code, description, file_path, file_name, file_size, file_type, price, session, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
             ->execute([...$values, current_session($pdo), (int) ($in['created_by'] ?? 0) ?: null]);
         $id = (int) $pdo->lastInsertId();
     }
@@ -798,15 +904,37 @@ if ($action === 'hoc_item_status') {
 
 if ($method === 'GET' && $action === 'hoc_item_sales') {
     $stmt = $pdo->prepare(
-        "SELECT COALESCE(s.full_name, f.full_name) AS full_name, COALESCE(s.matric_no, f.matric_no) AS matric_no,
-                p.amount, p.reference, p.created_at
+        "SELECT p.id AS payment_id, COALESCE(s.full_name, f.full_name) AS full_name, COALESCE(s.matric_no, f.matric_no) AS matric_no,
+                p.amount, p.reference, p.created_at, p.received_at
          FROM payments p
          LEFT JOIN students s ON s.id = p.student_id
          LEFT JOIN freshers f ON f.id = p.fresher_id
          WHERE p.hoc_item_id = ? AND p.status = 'success' ORDER BY p.id DESC"
     );
     $stmt->execute([(int) ($_GET['id'] ?? 0)]);
-    json_out($stmt->fetchAll());
+    $rows = $stmt->fetchAll();
+    foreach ($rows as &$r) {
+        $r['payment_id'] = (int) $r['payment_id'];
+        $r['amount'] = (float) $r['amount'];
+        $r['received'] = $r['received_at'] !== null;
+    }
+    json_out($rows);
+}
+
+// The HOC marks a paid item as handed over (or undoes it). The payment must belong to that item.
+if ($action === 'hoc_sale_receive') {
+    need_post($method);
+    $in = input();
+    $received = flag_int($in['received'] ?? true) === 1;
+    $stmt = $pdo->prepare("SELECT id FROM payments WHERE id = ? AND hoc_item_id = ? AND status = 'success'");
+    $stmt->execute([(int) ($in['payment_id'] ?? 0), (int) ($in['item_id'] ?? 0)]);
+    if (!$stmt->fetch()) fail('That payment was not found for this item.', 404);
+    $pdo->prepare('UPDATE payments SET received_at = ' . ($received ? 'NOW()' : 'NULL') . ', received_by = ? WHERE id = ?')
+        ->execute([$received ? mb_substr(trim((string) ($in['by'] ?? '')), 0, 160) : null, (int) $in['payment_id']]);
+    $stmt = $pdo->prepare('SELECT received_at FROM payments WHERE id = ?');
+    $stmt->execute([(int) $in['payment_id']]);
+    $at = $stmt->fetchColumn();
+    json_out(['payment_id' => (int) $in['payment_id'], 'received' => $at !== null, 'received_at' => $at ?: null]);
 }
 
 // ─── Email manager ───────────────────────────────────────────────────────────

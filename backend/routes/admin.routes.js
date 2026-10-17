@@ -8,6 +8,7 @@ import protect from '../middleware/auth.middleware.js';
 import { centralGet, centralPost, sendCentralError } from '../services/central.service.js';
 import { audienceCounts, createCampaign, listCampaigns, sendCampaignBatch } from '../services/campaign.service.js';
 import isAdmin from '../middleware/admin.middleware.js';
+import emailService from '../services/email.service.js';
 import adminPermissions, { ADMIN_PAGES } from '../middleware/admin-permissions.middleware.js';
 import {
   addEventGalleryImage,
@@ -33,7 +34,7 @@ import {
 } from '../services/admin.service.js';
 
 const router = Router();
-const ID_SYSTEM_API = 'https://nacosid.tmb.it.com/api.php';
+const ID_SYSTEM_API = process.env.CENTRAL_API_URL || 'https://nacosid.tmb.it.com/api.php';
 const API_KEY = process.env.ID_SYSTEM_API_KEY || 'NACOS_LASUSTECH_SECURE_API_KEY';
 
 router.use(protect, isAdmin, adminPermissions);
@@ -555,5 +556,16 @@ router.post('/admins', central(async (req, res) => {
 router.delete('/admins/:studentId', central(async (req, res) => {
   res.json(await centralPost('admin_access_remove', { student_id: req.params.studentId }));
 }));
+
+// Does the mail server accept our connection and login? Handy right after changing the mail settings.
+router.get('/email-check', async (_req, res) => {
+  const settings = emailService.mailSettingsSummary();
+  try {
+    await emailService.verifyConnection();
+    res.json({ ok: true, ...settings });
+  } catch (error) {
+    res.json({ ok: false, ...settings, error: emailService.friendlyMailError(error) });
+  }
+});
 
 export default router;

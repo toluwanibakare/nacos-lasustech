@@ -44,11 +44,22 @@ export const createCampaign = async ({ subject, body, audience, sentBy }) => {
   };
 };
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Campaigns this server is already sending in the background. A campaign has only one sender at a
+// time, so a browser asking for a batch at the same moment can never cause duplicate emails.
+const running = new Set();
+
 /** Sends the next batch. Safe to call repeatedly; returns progress. */
-export const sendCampaignBatch = async (campaignId) => {
+export const sendCampaignBatch = async (campaignId, { fromRunner = false } = {}) => {
   const campaign = await centralGet('email_campaign_get', { id: campaignId });
   if (campaign.status !== 'sending') {
     return { done: true, campaign };
+  }
+  if (!fromRunner && running.has(String(campaignId))) {
+    // The server is already sending this one. Wait a moment so a polling browser does not spin.
+    await sleep(1500);
+    return { done: false, busy: true, campaign: await centralGet('email_campaign_get', { id: campaignId }) };
   }
 
   const processed = Number(campaign.sent_count) + Number(campaign.failed_count);
@@ -85,3 +96,40 @@ export const sendCampaignBatch = async (campaignId) => {
 };
 
 export const listCampaigns = () => centralGet('email_campaigns');
+
+/**
+ * Sends a whole campaign from the server, batch by batch, without needing anyone's browser open.
+ * Returns straight away; progress is read from the campaign record.
+ */
+export const startCampaignInBackground = (campaignId) => {
+  const key = String(campaignId);
+  if (running.has(key)) return;
+  running.add(key);
+
+  (async () => {
+    try {
+      for (;;) {
+        const { done } = await sendCampaignBatch(campaignId, { fromRunner: true });
+        if (done) break;
+        await sleep(1500);
+      }
+      console.log(`✉️  Campaign ${campaignId} finished sending.`);
+    } catch (error) {
+      console.error(`❌ Campaign ${campaignId} stopped:`, error.response?.data?.message || error.message);
+    } finally {
+      running.delete(key);
+    }
+  })();
+};
+
+/** After a restart, carries on with any campaign that was still sending (created in the last 2 days). */
+export const resumeUnfinishedCampaigns = async () => {
+  const cutoff = Date.now() - 48 * 60 * 60 * 1000;
+  const rows = await listCampaigns();
+  rows
+    .filter((c) => c.status === 'sending' && new Date(String(c.created_at).replace(' ', 'T') + 'Z').getTime() > cutoff)
+    .forEach((c) => {
+      console.log(`✉️  Resuming campaign ${c.id} ("${c.subject}")`);
+      startCampaignInBackground(c.id);
+    });
+};
