@@ -1,3 +1,5 @@
+// NOT USED YET. The public Executives and Home pages still show the built-in list
+// (src/data/executives.ts). This hook is ready to switch them to the database later.
 import { useEffect, useState } from "react";
 import { fetchApi, resolveImageUrl } from "@/lib/api";
 import { executives as staticExecutives, Executive } from "@/data/executives";

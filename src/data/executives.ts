@@ -38,7 +38,7 @@ export const executives: Executive[] = [
     objectPosition: "object-top",
   },
   {
-    name: "Bakare Toluwani Moses",
+    name: "Toluwani Moses Bakare",
     post: "Vice President",
     level: "300 Level",
     description: "Acts as the chief assistant to the President, coordinating administrative programs and ensuring organizational stability.",
