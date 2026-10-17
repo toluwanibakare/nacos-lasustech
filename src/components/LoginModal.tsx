@@ -301,7 +301,7 @@ const LoginModal = ({ open, onClose, redirectTab }: LoginModalProps) => {
                 className="rounded-xl border-border/50 bg-muted/30 text-center font-mono text-lg tracking-widest"
               />
               <p className="text-[10px] text-muted-foreground text-center italic mt-1">
-                Check your **Spam/Junk** folder for the code.
+                Check your <strong>Spam/Junk</strong> folder for the code.
               </p>
             </div>
             <div className="space-y-2">

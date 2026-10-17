@@ -1276,7 +1276,7 @@ const PasswordResetDialog = ({ matricNumber }: { matricNumber: string }) => {
                 className="rounded-xl border-border/50 bg-muted/30 text-center font-mono text-lg tracking-widest"
               />
               <p className="text-[10px] text-muted-foreground text-center italic mt-2">
-                Can't find it? Please check your **Spam/Junk** folder.
+                Can't find it? Please check your <strong>Spam/Junk</strong> folder.
               </p>
             </div>
             <Button type="submit" className="w-full rounded-xl" disabled={loading}>
