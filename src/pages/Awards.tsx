@@ -447,7 +447,7 @@ const Awards = () => {
                   index === 2 ? "border-orange-500" :
                   "border-slate-100"
                 }`}>
-                  <img 
+                  <img loading="lazy" decoding="async" 
                     src={resolveImageUrl(cand.photo)} 
                     alt={cand.name || cand.full_name} 
                     className="h-full w-full object-cover" 

@@ -360,7 +360,7 @@ Your support will be highly appreciated, and God bless you as you do so. Please 
                 {/* Avatar */}
                 <div className="relative shrink-0">
                   <div className="h-32 w-32 sm:h-36 sm:w-36 rounded-[1.8rem] border-4 border-white shadow-2xl overflow-hidden bg-slate-100 ring-4 ring-primary/10">
-                    <img
+                    <img loading="lazy" decoding="async"
                       src={resolveImageUrl(nominee.photo)}
                       alt={nominee.name}
                       className="h-full w-full object-cover"

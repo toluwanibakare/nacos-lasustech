@@ -111,7 +111,7 @@ const EventGallery = () => {
             >
               <X className="h-5 w-5" />
             </button>
-            <img
+            <img loading="lazy" decoding="async"
               src={selectedImage.src}
               alt={selectedImage.alt}
               className="h-auto max-h-[85vh] w-auto max-w-full rounded-lg object-contain shadow-2xl"

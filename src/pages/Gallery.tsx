@@ -299,7 +299,7 @@ const Gallery = () => {
               </span>
             </div>
 
-            <img
+            <img loading="lazy" decoding="async"
               src={lightboxData.images[lightboxData.currentIndex].src}
               alt={lightboxData.images[lightboxData.currentIndex].alt}
               className="max-h-[75vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl"

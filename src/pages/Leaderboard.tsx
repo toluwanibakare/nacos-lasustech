@@ -73,7 +73,7 @@ const BarRow = ({
             transition={{ duration: 1.4, delay: delay + 0.1, ease: [0.34, 1.2, 0.64, 1] }}
             className="absolute top-1 bottom-1 w-12 rounded-full overflow-hidden border-[3px] border-white shadow-xl z-10 bg-slate-200"
           >
-            <img
+            <img loading="lazy" decoding="async"
               src={resolveImageUrl(nominee.photo)}
               alt={nominee.name}
               className="h-full w-full object-cover"

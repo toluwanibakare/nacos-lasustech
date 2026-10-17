@@ -75,7 +75,7 @@ const Footer = () => {
                 title="NACOS NATIONAL"
                 className="flex h-12 w-12 items-center justify-center rounded-full bg-white p-1 border border-white/20 transition-all hover:opacity-90 hover:scale-105 shadow-md shrink-0"
               >
-                <img
+                <img loading="lazy" decoding="async"
                   src={nacosLogo}
                   alt="NACOS NATIONAL"
                   className="h-full w-auto object-contain"
@@ -89,7 +89,7 @@ const Footer = () => {
                 title="LASUSTECH"
                 className="flex h-12 w-12 items-center justify-center rounded-full bg-white p-1 border border-white/20 transition-all hover:opacity-90 hover:scale-105 shadow-md shrink-0"
               >
-                <img
+                <img loading="lazy" decoding="async"
                   src={lasustechLogo}
                   alt="LASUSTECH"
                   className="h-full w-auto object-contain"

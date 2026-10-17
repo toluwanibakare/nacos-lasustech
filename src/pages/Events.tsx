@@ -106,7 +106,7 @@ const Events = () => {
           </button>
           
           <div className="relative max-w-5xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <img 
+            <img loading="lazy" decoding="async" 
               src={selectedImage} 
               alt="Flyer Preview" 
               className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
