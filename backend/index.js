@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
-import rateLimit from 'express-rate-limit';
+import { generalLimiter, ipBackstop, failedAttempts, emailsPerAccount } from './middleware/rate-limits.js';
 import axios from 'axios';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -60,32 +60,10 @@ app.use(cors({
 /**
  * SECURITY & MIDDLEWARE
  */
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  // The admin API already needs a signed-in admin token, and one admin session makes many calls.
-  // The login routes keep their own stricter limit (authLimiter).
-  skip: (req) => req.path.startsWith('/api/admin/'),
-  message: 'Too many requests from this IP, please try again after 15 minutes.'
-});
-
-const authLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 10,
-  message: 'Too many login attempts. Take a break and try again later.'
-});
-
-// Freshers sign up from shared campus networks, so this is looser than authLimiter.
-const fresherLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 40,
-  message: 'Too many attempts. Please wait a few minutes and try again.'
-});
-
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(express.json({ limit: '10kb' }));
 app.use(morgan('dev'));
-app.use(limiter);
+app.use(generalLimiter);
 
 /**
  * STATIC FILES
@@ -166,9 +144,25 @@ app.get('/api/ping-central', async (req, res) => {
 });
 
 // Register all API routes
-app.use('/api/auth', authLimiter, authRoutes);
-app.use('/api/admin-auth', authLimiter, adminAuthRoutes);
-app.use('/api/fresher', fresherLimiter, fresherRoutes);
+// Student sign-in and recovery (account = matric number)
+app.use('/api/auth/login', ...failedAttempts('matric_number'));
+app.use('/api/auth/verify-otp', ...failedAttempts('matric_number'));
+app.use('/api/auth/reset-password', ...failedAttempts('matric_number'));
+app.use('/api/auth/forgot-password', emailsPerAccount('matric_number'));
+app.use('/api/auth', ipBackstop(300), authRoutes);
+
+// Admin sign-in (account = username or matric number)
+app.use('/api/admin-auth/login', ...failedAttempts('username'));
+app.use('/api/admin-auth', ipBackstop(100, 60 * 60 * 1000), adminAuthRoutes);
+
+// Fresher sign-up and sign-in (account = email)
+app.use('/api/fresher/login', ...failedAttempts('email'));
+app.use('/api/fresher/verify', ...failedAttempts('email'));
+app.use('/api/fresher/reset-password', ...failedAttempts('email'));
+app.use('/api/fresher/forgot-password', emailsPerAccount('email'));
+app.use('/api/fresher/resend', emailsPerAccount('email'));
+app.use('/api/fresher/register', emailsPerAccount('email'));
+app.use('/api/fresher', ipBackstop(300), fresherRoutes);
 app.use('/api/hoc', hocRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/content', contentRoutes);
