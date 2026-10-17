@@ -5,7 +5,10 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import protect from '../middleware/auth.middleware.js';
+import { centralGet, centralPost, sendCentralError } from '../services/central.service.js';
+import { audienceCounts, createCampaign, listCampaigns, sendCampaignBatch } from '../services/campaign.service.js';
 import isAdmin from '../middleware/admin.middleware.js';
+import adminPermissions, { ADMIN_PAGES } from '../middleware/admin-permissions.middleware.js';
 import {
   addEventGalleryImage,
   clearStudentFlag,
@@ -14,6 +17,8 @@ import {
   deleteEventGalleryImage,
   deleteExecutive,
   getAcademicSettings,
+  getFees,
+  updateFees,
   getAdminSummary,
   getStudentFlags,
   listBlogs,
@@ -30,7 +35,7 @@ const router = Router();
 const ID_SYSTEM_API = 'https://nacosid.tmb.it.com/api.php';
 const API_KEY = process.env.ID_SYSTEM_API_KEY || 'NACOS_LASUSTECH_SECURE_API_KEY';
 
-router.use(protect, isAdmin);
+router.use(protect, isAdmin, adminPermissions);
 
 const safeRemoteGet = async (action) => {
   try {
@@ -50,7 +55,7 @@ const safeRemoteGet = async (action) => {
   }
 };
 
-router.get('/dashboard', async (_req, res, next) => {
+router.get('/dashboard', async (req, res, next) => {
   try {
     const [students, flags, executives, events, blogs, academicSettings] = await Promise.all([
       safeRemoteGet('get_all_students'),
@@ -65,14 +70,15 @@ router.get('/dashboard', async (_req, res, next) => {
       totalStudents: Array.isArray(students) ? students.length : 0,
     });
 
+    const can = (page) => req.adminPermissions.includes('*') || req.adminPermissions.includes(page);
     res.json({
-      stats,
-      students: Array.isArray(students) ? students : [],
-      flags,
-      executives,
-      events,
-      blogs,
-      academicSettings,
+      stats: can('students') ? stats : null,
+      students: can('students') && Array.isArray(students) ? students : [],
+      flags: can('students') ? flags : [],
+      executives: can('executives') ? executives : [],
+      events: can('events') ? events : [],
+      blogs: can('blogs') ? blogs : [],
+      academicSettings: can('settings') ? academicSettings : null,
     });
   } catch (error) {
     next(error);
@@ -169,7 +175,7 @@ router.get('/settings/academic', async (_req, res, next) => {
 
 router.put('/settings/academic', async (req, res, next) => {
   try {
-    const { session, semester } = req.body;
+    const { session, semester, welcomeMessage } = req.body;
 
     if (!session || !semester) {
       res.status(422).json({ message: 'Session and semester are required.' });
@@ -179,11 +185,43 @@ router.put('/settings/academic', async (req, res, next) => {
     const updated = await updateAcademicSettings({
       session: String(session).trim(),
       semester: String(semester).trim(),
-      updatedBy: req.user?.username || req.user?.name || 'admin',
+      welcomeMessage: welcomeMessage === undefined ? undefined : String(welcomeMessage),
     });
 
     res.json(updated);
   } catch (error) {
+    if (error.response?.data?.message) {
+      res.status(error.response.status || 422).json({ message: error.response.data.message });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.get('/settings/fees', async (_req, res, next) => {
+  try {
+    res.json(await getFees());
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put('/settings/fees', async (req, res, next) => {
+  try {
+    const { idCardStalite, idCardFresher, dues } = req.body;
+    const values = { idCardStalite, idCardFresher, dues };
+    for (const [name, value] of Object.entries(values)) {
+      if (value !== undefined && (!Number.isFinite(Number(value)) || Number(value) < 0)) {
+        res.status(422).json({ message: `Invalid amount for ${name}.` });
+        return;
+      }
+    }
+    res.json(await updateFees(values));
+  } catch (error) {
+    if (error.response?.data?.message) {
+      res.status(error.response.status || 422).json({ message: error.response.data.message });
+      return;
+    }
     next(error);
   }
 });
@@ -371,5 +409,142 @@ router.post('/upload', diskUpload.single('image'), (req, res) => {
   const relativePath = 'uploads/' + req.file.filename;
   res.json({ status: 'success', path: relativePath });
 });
+
+/* ==========================================
+   Roles, freshers, ID cards, HOC items, email
+   (all data lives in the central database via the PHP API)
+   ========================================== */
+
+const central = (fn) => async (req, res, next) => {
+  try {
+    await fn(req, res);
+  } catch (error) {
+    if (error.response) {
+      sendCentralError(res, error, 'Request failed.');
+      return;
+    }
+    next(error);
+  }
+};
+
+// Tag a student as HOC / Assistant HOC / an executive role / plain Student.
+router.put('/students/:id/post', central(async (req, res) => {
+  res.json(await centralPost('set_student_post', { id: req.params.id, post: req.body.post }));
+}));
+
+// Correct a student's department or level.
+router.put('/students/:id/fields', central(async (req, res) => {
+  const { department, level } = req.body;
+  res.json(await centralPost('set_student_fields', {
+    id: req.params.id,
+    ...(department !== undefined ? { department } : {}),
+    ...(level !== undefined ? { level } : {}),
+  }));
+}));
+
+router.get('/freshers', central(async (_req, res) => {
+  res.json(await centralGet('get_all_freshers'));
+}));
+
+router.post('/freshers/:id/matric', central(async (req, res) => {
+  res.json(await centralPost('assign_fresher_matric', { fresher_id: req.params.id, matric_no: req.body.matric_no }));
+}));
+
+router.get('/id-requests', central(async (_req, res) => {
+  res.json(await centralGet('get_id_requests'));
+}));
+
+router.put('/id-requests/:id/status', central(async (req, res) => {
+  res.json(await centralPost('set_id_request_status', { id: req.params.id, status: req.body.status }));
+}));
+
+// Generates ID card PNG(s) (a ZIP when several) and streams the file back.
+router.post('/id-cards/generate', async (req, res, next) => {
+  try {
+    const response = await axios.post(ID_SYSTEM_API, { ids: req.body.ids }, {
+      params: { action: 'generate_cards' },
+      headers: { 'X-API-KEY': API_KEY, 'Content-Type': 'application/json' },
+      responseType: 'arraybuffer',
+      timeout: 120000,
+    });
+    res.set({
+      'Content-Type': response.headers['content-type'],
+      'Content-Disposition': response.headers['content-disposition'] || 'attachment',
+    });
+    res.send(Buffer.from(response.data));
+  } catch (error) {
+    if (error.response) {
+      let message = 'Could not generate cards.';
+      try {
+        message = JSON.parse(Buffer.from(error.response.data).toString()).message || message;
+      } catch (_) {}
+      res.status(error.response.status).json({ message });
+      return;
+    }
+    next(error);
+  }
+});
+
+// HOC items across all levels (admin overview of what each class is being charged).
+router.get('/hoc-items', central(async (req, res) => {
+  res.json(await centralGet('hoc_items_list', { level: req.query.level, include_archived: 1 }));
+}));
+
+router.get('/hoc-items/:id/sales', central(async (req, res) => {
+  res.json(await centralGet('hoc_item_sales', { id: req.params.id }));
+}));
+
+router.put('/hoc-items/:id/status', central(async (req, res) => {
+  res.json(await centralPost('hoc_item_status', { id: req.params.id, status: req.body.status }));
+}));
+
+// ── Email manager ────────────────────────────────────────────────────────────
+router.post('/email/audience-counts', central(async (req, res) => {
+  res.json(await audienceCounts(req.body.audience || {}));
+}));
+
+router.get('/email/campaigns', central(async (_req, res) => {
+  res.json(await listCampaigns());
+}));
+
+router.post('/email/campaigns', central(async (req, res) => {
+  const { subject, body, audience } = req.body;
+  res.status(201).json(await createCampaign({
+    subject, body, audience: audience || {},
+    sentBy: req.user?.username || req.user?.name || 'admin',
+  }));
+}));
+
+router.post('/email/campaigns/:id/send-batch', central(async (req, res) => {
+  res.json(await sendCampaignBatch(req.params.id));
+}));
+
+// ── Who am I (permissions drive which pages the admin screen shows) ──────────
+router.get('/me', (req, res) => {
+  const isSuper = req.user.admin_kind === 'super';
+  res.json({
+    super: isSuper,
+    name: req.user.name,
+    username: req.user.username,
+    permissions: isSuper ? ADMIN_PAGES : req.adminPermissions,
+  });
+});
+
+// ── Sub-admins (super admin only: 'admins' is not a page any sub-admin can hold) ──
+router.get('/admins', central(async (_req, res) => {
+  res.json(await centralGet('admin_access_list'));
+}));
+
+router.post('/admins', central(async (req, res) => {
+  res.status(201).json(await centralPost('admin_access_set', {
+    matric_no: req.body.matric_no,
+    permissions: req.body.permissions,
+    created_by: req.user?.username || 'admin',
+  }));
+}));
+
+router.delete('/admins/:studentId', central(async (req, res) => {
+  res.json(await centralPost('admin_access_remove', { student_id: req.params.studentId }));
+}));
 
 export default router;

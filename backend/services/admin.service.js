@@ -1,5 +1,6 @@
 import axios from 'axios';
 import fs from 'fs';
+import { centralGet, centralPost } from './central.service.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -366,294 +367,157 @@ const normalizeImagePath = (pathStr) => {
    1. ACADEMIC SETTINGS SERVICES
    ========================================== */
 
+// Session, semester, welcome message and fees live in the central database
+// (site_settings), so the admin, the dashboards and the PHP API always agree.
 export const getAcademicSettings = async () => {
-  const store = getStore();
-  return store.academicSettings;
+  try {
+    const fees = await centralGet('get_fees');
+    return {
+      session: fees.session,
+      semester: fees.semester,
+      welcomeMessage: fees.welcome_message || '',
+    };
+  } catch (error) {
+    console.warn('⚠️ Could not read academic settings from central system:', error.message);
+    return getStore().academicSettings;
+  }
 };
 
-export const updateAcademicSettings = async ({ session, semester, updatedBy }) => {
-  const store = getStore();
-  store.academicSettings = { session, semester };
-  saveStore(store);
-  
-  // Background call to central API
-  remotePost('update_academic_settings', { session, semester, updated_by: updatedBy });
-  
-  return store.academicSettings;
+export const updateAcademicSettings = async ({ session, semester, welcomeMessage }) => {
+  await centralPost('update_academic_settings', {
+    session,
+    semester,
+    ...(welcomeMessage !== undefined ? { welcome_message: welcomeMessage } : {}),
+  });
+  return getAcademicSettings();
+};
+
+export const getFees = async () => {
+  const fees = await centralGet('get_fees');
+  return {
+    session: fees.session,
+    idCardStalite: fees.id_card_stalite,
+    idCardFresher: fees.id_card_fresher,
+    dues: fees.dues,
+    departments: fees.departments,
+  };
+};
+
+export const updateFees = async ({ idCardStalite, idCardFresher, dues }) => {
+  await centralPost('set_fees', {
+    ...(idCardStalite !== undefined ? { id_card_stalite: idCardStalite } : {}),
+    ...(idCardFresher !== undefined ? { id_card_fresher: idCardFresher } : {}),
+    ...(dues !== undefined ? { dues } : {}),
+  });
+  return getFees();
 };
 
 /* ==========================================
-   2. STUDENT FLAGS SERVICES
+   2. STUDENT FLAGS SERVICES  (central database)
    ========================================== */
 
-export const getStudentFlags = async () => {
-  const store = getStore();
-  return store.studentFlags || [];
-};
+export const getStudentFlags = async () => centralGet('flags_list');
 
 export const getStudentFlagByMatric = async (matricNumber) => {
-  const store = getStore();
-  const flags = store.studentFlags || [];
-  return flags.find(f => String(f.matric_number).trim() === String(matricNumber).trim() && f.status === 'active') || null;
+  try {
+    return (await centralGet('flag_get', { matric: matricNumber })) || null;
+  } catch (error) {
+    console.warn('⚠️ Could not read student flag:', error.message);
+    return null;
+  }
 };
 
-export const upsertStudentFlag = async ({
-  matricNumber,
-  studentName,
-  reason,
-  message,
-  flaggedBy,
-}) => {
-  const store = getStore();
-  if (!store.studentFlags) store.studentFlags = [];
-  
-  const existingIndex = store.studentFlags.findIndex(
-    f => String(f.matric_number).trim() === String(matricNumber).trim() && f.status === 'active'
-  );
-  
-  const flagObj = {
-    id: existingIndex !== -1 ? store.studentFlags[existingIndex].id : Date.now(),
+export const upsertStudentFlag = async ({ matricNumber, studentName, reason, message, flaggedBy }) =>
+  centralPost('flag_upsert', {
     matric_number: matricNumber,
     student_name: studentName,
     reason,
     message,
     flagged_by: flaggedBy,
-    status: 'active',
-    created_at: existingIndex !== -1 ? store.studentFlags[existingIndex].created_at : new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
+  });
 
-  if (existingIndex !== -1) {
-    store.studentFlags[existingIndex] = flagObj;
-  } else {
-    store.studentFlags.push(flagObj);
-  }
-  
-  saveStore(store);
-  
-  remotePost('upsert_student_flag', flagObj);
-  
-  return flagObj;
-};
-
-export const clearStudentFlag = async (id) => {
-  const store = getStore();
-  if (!store.studentFlags) store.studentFlags = [];
-  
-  const existingIndex = store.studentFlags.findIndex(f => String(f.id) === String(id));
-  if (existingIndex !== -1) {
-    store.studentFlags[existingIndex].status = 'resolved';
-    store.studentFlags[existingIndex].updated_at = new Date().toISOString();
-    saveStore(store);
-  }
-  
-  remotePost('clear_student_flag', { id });
-};
+export const clearStudentFlag = async (id) => centralPost('flag_clear', { id });
 
 /* ==========================================
-   3. EXECUTIVES SERVICES
+   3. EXECUTIVES SERVICES  (central database)
    ========================================== */
 
+const withExecutiveImage = (item) => {
+  const image = normalizeImagePath(item.image_url || item.image);
+  return { ...item, image_url: image, image };
+};
+
 export const listExecutives = async ({ includeInactive = false } = {}) => {
-  const store = getStore();
-  const excos = store.executives || [];
-  
-  const items = includeInactive ? excos : excos.filter(e => e.is_active === 1 || e.is_active === true);
-  return items.map(item => ({
-    ...item,
-    image_url: normalizeImagePath(item.image_url || item.image),
-    image: item.image || item.image_url || '',
-  }));
+  const rows = await centralGet('executives_list', includeInactive ? { include_inactive: 1 } : {});
+  return rows.map(withExecutiveImage);
 };
 
 export const saveExecutive = async (payload, id = null) => {
-  const store = getStore();
-  if (!store.executives) store.executives = [];
-  
-  const normalized = {
+  await centralPost('executive_save', {
     ...payload,
     image_url: normalizeImagePath(payload.image_url || payload.image),
-    image: normalizeImagePath(payload.image || payload.image_url),
-    is_active: payload.is_active === false ? 0 : 1,
-    sort_order: Number(payload.sort_order || 0),
-  };
-
-  if (id) {
-    const idx = store.executives.findIndex(e => String(e.id) === String(id));
-    if (idx !== -1) {
-      store.executives[idx] = { ...store.executives[idx], ...normalized, id };
-    }
-  } else {
-    normalized.id = 'exec-' + Date.now();
-    store.executives.push(normalized);
-  }
-  
-  saveStore(store);
-  
-  remotePost('save_executive', { ...normalized, id });
-  
+    id,
+  });
   return listExecutives({ includeInactive: true });
 };
 
-export const deleteExecutive = async (id) => {
-  const store = getStore();
-  if (!store.executives) store.executives = [];
-  store.executives = store.executives.filter(e => String(e.id) !== String(id));
-  saveStore(store);
-  
-  remotePost('delete_executive', { id });
-};
+export const deleteExecutive = async (id) => centralPost('executive_delete', { id });
 
 /* ==========================================
-   4. EVENTS & GALLERY SERVICES
+   4. EVENTS & GALLERY SERVICES  (central database)
    ========================================== */
 
 export const listEvents = async ({ includeInactive = false } = {}) => {
-  const store = getStore();
-  const events = store.events || [];
-  
-  const items = includeInactive ? events : events.filter(e => e.is_active === 1 || e.is_active === true);
-  return items.map(item => ({
+  const rows = await centralGet('events_list', includeInactive ? { include_inactive: 1 } : {});
+  return rows.map((item) => ({
     ...item,
-    cover_image_url: normalizeImagePath(item.cover_image_url || item.image || item.cover_image || ''),
-    gallery: Array.isArray(item.gallery) ? item.gallery.map(img => ({
-      ...img,
-      image_url: normalizeImagePath(img.image_url || img.image || ''),
-    })) : [],
+    cover_image_url: normalizeImagePath(item.cover_image_url),
+    gallery: (item.gallery || []).map((img) => ({ ...img, image_url: normalizeImagePath(img.image_url) })),
   }));
 };
 
 export const saveEvent = async (payload, id = null) => {
-  const store = getStore();
-  if (!store.events) store.events = [];
-  
-  const normalized = {
+  await centralPost('event_save', {
     ...payload,
     cover_image_url: normalizeImagePath(payload.cover_image_url || payload.image),
-    is_active: payload.is_active === false ? 0 : 1,
-    sort_order: Number(payload.sort_order || 0),
-  };
-
-  if (id) {
-    const idx = store.events.findIndex(e => String(e.id) === String(id));
-    if (idx !== -1) {
-      store.events[idx] = { ...store.events[idx], ...normalized, id };
-    }
-  } else {
-    normalized.id = 'event-' + Date.now();
-    normalized.gallery = [];
-    store.events.push(normalized);
-  }
-  
-  saveStore(store);
-  
-  remotePost('save_event', { ...normalized, id });
-  
+    id,
+  });
   return listEvents({ includeInactive: true });
 };
 
-export const deleteEvent = async (id) => {
-  const store = getStore();
-  if (!store.events) store.events = [];
-  store.events = store.events.filter(e => String(e.id) !== String(id));
-  saveStore(store);
-  
-  remotePost('delete_event', { id });
-};
+export const deleteEvent = async (id) => centralPost('event_delete', { id });
 
 export const addEventGalleryImage = async (eventId, payload) => {
-  const store = getStore();
-  if (!store.events) store.events = [];
-  
-  const idx = store.events.findIndex(e => String(e.id) === String(eventId));
-  if (idx !== -1) {
-    if (!store.events[idx].gallery) store.events[idx].gallery = [];
-    
-    const normalizedImage = {
-      id: 'gallery-' + Date.now(),
-      image_url: normalizeImagePath(payload.image_url || payload.image),
-      caption: payload.caption || '',
-      sort_order: Number(payload.sort_order || 0),
-    };
-    
-    store.events[idx].gallery.push(normalizedImage);
-    saveStore(store);
-    
-    remotePost('add_event_gallery', { event_id: eventId, ...normalizedImage });
-  }
-  
+  await centralPost('event_gallery_add', {
+    event_id: eventId,
+    image_url: normalizeImagePath(payload.image_url || payload.image),
+    caption: payload.caption || '',
+    sort_order: Number(payload.sort_order || 0),
+  });
   return listEvents({ includeInactive: true });
 };
 
-export const deleteEventGalleryImage = async (imageId) => {
-  const store = getStore();
-  if (!store.events) store.events = [];
-  
-  for (let i = 0; i < store.events.length; i++) {
-    if (store.events[i].gallery) {
-      const originalLen = store.events[i].gallery.length;
-      store.events[i].gallery = store.events[i].gallery.filter(img => String(img.id) !== String(imageId));
-      if (store.events[i].gallery.length !== originalLen) {
-        saveStore(store);
-        break;
-      }
-    }
-  }
-  
-  remotePost('delete_event_gallery', { id: imageId });
-};
+export const deleteEventGalleryImage = async (imageId) => centralPost('event_gallery_delete', { id: imageId });
 
 /* ==========================================
-   5. BLOG SERVICES
+   5. BLOG SERVICES  (central database)
    ========================================== */
 
 export const listBlogs = async ({ includeDrafts = false } = {}) => {
-  const store = getStore();
-  const blogs = store.blogs || [];
-  
-  const items = includeDrafts ? blogs : blogs.filter(b => b.is_published === 1 || b.is_published === true);
-  return items.map(item => ({
-    ...item,
-    image_url: normalizeImagePath(item.image_url || item.image || ''),
-  }));
+  const rows = await centralGet('blogs_list', includeDrafts ? { include_drafts: 1 } : {});
+  return rows.map((item) => ({ ...item, image_url: normalizeImagePath(item.image_url || '') }));
 };
 
 export const saveBlog = async (payload, id = null) => {
-  const store = getStore();
-  if (!store.blogs) store.blogs = [];
-  
-  const normalized = {
+  await centralPost('blog_save', {
     ...payload,
     image_url: normalizeImagePath(payload.image_url || payload.image),
-    is_published: payload.is_published === false ? 0 : 1,
-  };
-
-  if (id) {
-    const idx = store.blogs.findIndex(b => String(b.id) === String(id));
-    if (idx !== -1) {
-      store.blogs[idx] = { ...store.blogs[idx], ...normalized, id };
-    }
-  } else {
-    normalized.id = 'blog-' + Date.now();
-    normalized.published_at = new Date().toISOString();
-    store.blogs.push(normalized);
-  }
-  
-  saveStore(store);
-  
-  remotePost('save_blog', { ...normalized, id });
-  
+    id,
+  });
   return listBlogs({ includeDrafts: true });
 };
 
-export const deleteBlog = async (id) => {
-  const store = getStore();
-  if (!store.blogs) store.blogs = [];
-  store.blogs = store.blogs.filter(b => String(b.id) !== String(id));
-  saveStore(store);
-  
-  remotePost('delete_blog', { id });
-};
+export const deleteBlog = async (id) => centralPost('blog_delete', { id });
 
 /* ==========================================
    6. ADMIN DASHBOARD SUMMARY

@@ -4,6 +4,7 @@ import FormData from 'form-data';
 import protect from '../middleware/auth.middleware.js';
 import upload from '../middleware/upload.middleware.js';
 import { getAcademicSettings, getStudentFlagByMatric } from '../services/admin.service.js';
+import { centralGet, identityParams } from '../services/central.service.js';
 
 const router = Router();
 const ID_SYSTEM_API = 'https://nacosid.tmb.it.com/api.php';
@@ -11,18 +12,22 @@ const API_KEY = process.env.ID_SYSTEM_API_KEY || 'NACOS_LASUSTECH_SECURE_API_KEY
 
 router.get('/dashboard', protect, async (req, res) => {
   try {
-    const [response, adminNotice, academicSettings] = await Promise.all([
+    const [response, adminNotice, academicSettings, fees, idCard] = await Promise.all([
       axios.get(`${ID_SYSTEM_API}?action=dashboard&matric=${req.user.matric}`, {
         headers: { 'X-API-KEY': API_KEY },
       }),
       getStudentFlagByMatric(req.user.matric),
       getAcademicSettings(),
+      centralGet('get_fees'),
+      centralGet('id_card_status', identityParams(req.user)).catch(() => null),
     ]);
 
     res.json({
       ...response.data,
       adminNotice,
       academicSettings,
+      fees,
+      idCard,
     });
   } catch (error) {
     console.error('Dashboard proxy error:', error.response?.data || error.message);

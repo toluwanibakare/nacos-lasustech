@@ -246,6 +246,32 @@ export const sendOtp = async (userEmail, userName, otpCode) => {
 };
 
 /**
+ * Send the email-verification code to a new fresher
+ */
+export const sendVerificationCode = async (userEmail, userName, otpCode) => {
+  const mailOptions = {
+    from: `"${APP_NAME}" <${process.env.SMTP_USER}>`,
+    to: userEmail,
+    subject: `Verify your email: ${otpCode}`,
+    html: `
+      ${emailHeader}
+      <h3 style="color: #333; margin-top: 0;">Welcome to NACOS LASUSTECH, ${userName}!</h3>
+      <p>Use the code below to verify your email and finish creating your account.</p>
+
+      <div style="margin: 25px 0; padding: 20px; background-color: #f8fafc; border-radius: 8px; text-align: center; border: 1px solid #e2e8f0;">
+        <p style="margin: 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Verification Code</p>
+        <p style="margin: 10px 0 0 0; font-family: monospace; font-size: 32px; color: ${PRIMARY_COLOR}; font-weight: bold; letter-spacing: 5px;">${otpCode}</p>
+      </div>
+
+      <p style="color: #475569; font-size: 14px; line-height: 1.6;">This code will expire in 15 minutes. If you did not create this account, please ignore this email.</p>
+      ${emailFooter}
+    `,
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
+/**
  * Send Custom HTML Email
  */
 export const sendCustomEmail = async (to, subject, htmlContent) => {
@@ -270,5 +296,6 @@ export default {
   sendPaymentNotificationToAdmin,
   sendPasswordReset,
   sendOtp,
+  sendVerificationCode,
   sendCustomEmail
 };

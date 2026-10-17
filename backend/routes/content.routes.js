@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import axios from 'axios';
 import { listBlogs, listEvents, listExecutives } from '../services/admin.service.js';
+import { centralGet } from '../services/central.service.js';
 
 const router = Router();
 const headers = { 'X-API-KEY': process.env.ID_SYSTEM_API_KEY || 'NACOS_LASUSTECH_SECURE_API_KEY' };
@@ -12,6 +13,16 @@ const fetchRemote = async (action) => {
   });
   return response.data || [];
 };
+
+// Public: current session, fees and the department list (used by the registration form).
+router.get('/settings', async (_req, res) => {
+  try {
+    res.json(await centralGet('get_fees'));
+  } catch (error) {
+    console.error('Settings fetch error:', error.message);
+    res.status(502).json({ message: 'Could not load settings.' });
+  }
+});
 
 router.get('/executives', async (_req, res) => {
   try {
