@@ -29,6 +29,8 @@ class KorapayService {
             email: data.email,
             name: data.full_name || 'NACOS Student'
           },
+          // false = the payer covers Korapay's charges, so NACOS receives the full amount
+          merchant_bears_cost: false,
           notification_url: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/payments/webhook`,
           redirect_url: `${process.env.FRONTEND_URL || 'http://localhost:8080'}/dashboard`,
           metadata: data.metadata || {}
