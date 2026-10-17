@@ -209,8 +209,9 @@ router.get('/verify/:reference', protect, async (req, res) => {
 router.post('/webhook', async (req, res) => {
   const { event, data } = req.body || {};
 
-  // Donations are public and have no account to credit.
-  if (event === 'charge.success' && data?.reference && !String(data.reference).startsWith('DONATE-')) {
+  // Only our own payments (NACOS-...). Donations have no account to credit, and a
+  // different product sharing this Korapay account must never be recorded here.
+  if (event === 'charge.success' && String(data?.reference || '').startsWith('NACOS-')) {
     try {
       await confirmAndRecord(data.reference, async (verified) => {
         const customer = verified.customer || data.customer || {};
