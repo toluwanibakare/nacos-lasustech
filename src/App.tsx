@@ -12,11 +12,11 @@ import Constitution from "./pages/Constitution.tsx";
 import EventGallery from "./pages/EventGallery.tsx";
 import Gallery from "./pages/Gallery.tsx";
 import AdminPortal from "./pages/AdminPortal.tsx";
-import Awards from "./pages/Awards.tsx";
-import VotingCategories from "./pages/VotingCategories.tsx";
-import Leaderboard from "./pages/Leaderboard.tsx";
-import NomineeProfile from "./pages/NomineeProfile.tsx";
-import VoteAmount from "./pages/VoteAmount.tsx";
+// import Awards from "./pages/Awards.tsx"; // voting disabled
+// import VotingCategories from "./pages/VotingCategories.tsx"; // voting disabled
+// import Leaderboard from "./pages/Leaderboard.tsx"; // voting disabled
+// import NomineeProfile from "./pages/NomineeProfile.tsx"; // voting disabled
+// import VoteAmount from "./pages/VoteAmount.tsx"; // voting disabled
 import NotFound from "./pages/NotFound.tsx";
 import Donate from "./pages/Donate.tsx";
 import ScrollToTop from "./components/ScrollToTop";
@@ -38,7 +38,7 @@ const App = () => {
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <ScrollToTop />
           <Routes>
-            <Route path="/" element={awardsMode ? <Awards /> : <Index />} />
+            <Route path="/" element={<Index />} />
             <Route path="/executives" element={awardsMode ? <NotFound /> : <Executives />} />
             <Route path="/events" element={awardsMode ? <NotFound /> : <Events />} />
             <Route path="/dashboard" element={
@@ -53,11 +53,13 @@ const App = () => {
             <Route path="/constitution" element={awardsMode ? <NotFound /> : <Constitution />} />
             <Route path="/gallery" element={awardsMode ? <NotFound /> : <Gallery />} />
             <Route path="/events/:id/gallery" element={awardsMode ? <NotFound /> : <EventGallery />} />
+            {/* Voting / awards is switched off for now (these routes fall through to NotFound).
             <Route path="/awards" element={<Awards />} />
             <Route path="/voting/categories" element={<VotingCategories />} />
             <Route path="/voting/leaderboard" element={<Leaderboard />} />
             <Route path="/voting/:category/:id" element={<NomineeProfile />} />
             <Route path="/vote-amount" element={<VoteAmount />} />
+            */}
             <Route path="/donate" element={awardsMode ? <NotFound /> : <Donate />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

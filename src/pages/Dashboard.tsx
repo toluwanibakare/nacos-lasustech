@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Copy, Check, ExternalLink, CreditCard, IdCard as IdIcon, LayoutDashboard, LogOut, User, AlertCircle, Save, Calendar, Home, Lock } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Check, CreditCard, IdCard as IdIcon, LayoutDashboard, LogOut, User, AlertCircle, Save, Calendar, Home, Lock, BookOpen, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,13 +14,97 @@ import {
 import Layout from "@/components/Layout";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { fetchApi, API_BASE_URL } from "@/lib/api";
-import { events as staticEvents } from "@/data/events";
+import { fetchApi } from "@/lib/api";
+import IdCardApplication from "@/components/IdCardApplication";
+import HocPanel from "@/components/HocPanel";
+import MaterialsPanel from "@/components/MaterialsPanel";
 
 import nacosLogo from "@/assets/nacos_logo.png";
 import lasustechLogo from "@/assets/lasustech_logo.png";
 
 const ACCOUNT_NUMBER = "1234567890";
+
+type DashTab = "overview" | "dues" | "idcard" | "materials" | "hoc" | "profile";
+const VALID_TABS: DashTab[] = ["overview", "dues", "idcard", "materials", "hoc", "profile"];
+
+interface NavItem {
+  id: DashTab;
+  label: string;
+  short: string;
+  icon: LucideIcon;
+}
+
+interface Fees {
+  session?: string;
+  semester?: string;
+  dues?: number | string;
+  id_card_stalite?: number | string;
+  id_card_fresher?: number | string;
+  welcome_message?: string;
+}
+
+interface AcademicSettings {
+  session: string;
+  semester: string;
+  welcomeMessage: string;
+}
+
+interface PaymentRow {
+  id?: number | string;
+  amount: number | string;
+  reference?: string;
+  status: string;
+  payment_type: string;
+  session?: string | null;
+  hoc_item_id?: number | string | null;
+  created_at?: string;
+}
+
+interface IdCardInfo {
+  request?: { status?: string } | null;
+  card_issuable?: boolean;
+}
+
+interface DashData {
+  profile?: Record<string, unknown>;
+  activities?: unknown[];
+  adminNotice?: unknown;
+  academicSettings?: Partial<AcademicSettings> | null;
+  fees?: Fees | null;
+  idCard?: IdCardInfo | null;
+}
+
+const hasPaidDues = (payments: PaymentRow[], session?: string) =>
+  !!session && payments.some(p => p.payment_type === 'dues' && p.status === 'success' && p.session === session);
+
+const deriveIdCardStatus = (idCard: IdCardInfo | null | undefined, matric: string, fresher: boolean): string => {
+  const status = idCard?.request?.status;
+  if (!status) return "Not Registered";
+  if (fresher && !matric && status !== 'awaiting_payment') return "Paid: card issued after matric assignment";
+  switch (status) {
+    case 'awaiting_payment': return "Awaiting payment";
+    case 'pending':
+    case 'processing': return "Processing";
+    case 'ready': return "Ready";
+    case 'collected': return "Collected";
+    default: return "Processing";
+  }
+};
+
+const paymentLabel = (p: PaymentRow): string => {
+  switch (p.payment_type) {
+    case 'dues': return "Membership dues";
+    case 'id_card': return "ID card";
+    case 'id_replacement': return "ID card replacement";
+    case 'hoc_item': return `Course material${p.hoc_item_id ? ` (item #${p.hoc_item_id})` : ""}`;
+    default: return String(p.payment_type || 'Payment').replace(/_/g, ' ');
+  }
+};
+
+const idStatusColor = (label: string) =>
+  label === "Ready" || label === "Collected" ? "text-green-600"
+    : label === "Not Registered" ? "text-muted-foreground"
+    : "text-blue-600";
 
 const Dashboard = () => {
   const location = useLocation();
@@ -27,12 +112,22 @@ const Dashboard = () => {
   const { toast } = useToast();
   
   // 1. ALL HOOKS AT THE TOP
-  const [activeTab, setActiveTab] = useState<"overview" | "dues" | "idcard" | "profile">(() => {
+  const readStoredUser = (): Record<string, unknown> => {
+    try {
+      const raw = localStorage.getItem("user");
+      const parsed = raw && raw !== "null" ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  };
+  const isFresher = readStoredUser().account_type === "fresher";
+
+  const [activeTab, setActiveTab] = useState<DashTab>(() => {
     try {
       const saved = localStorage.getItem("dashboard_active_tab");
       if (location.state?.tab) return location.state.tab;
-      const validTabs = ["overview", "dues", "idcard", "profile"];
-      if (saved && validTabs.includes(saved)) return saved as any;
+      if (saved && VALID_TABS.includes(saved as DashTab)) return saved as DashTab;
     } catch (e) {
       console.error("Tab state error", e);
     }
@@ -48,20 +143,26 @@ const Dashboard = () => {
   const [otpCode, setOtpCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [amountOwing, setAmountOwing] = useState(2000);
+  const [fees, setFees] = useState<Fees | null>(null);
   const [activities, setActivities] = useState<any[]>([]);
-  const [payments, setPayments] = useState<any[]>([]);
+  const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [adminNotice, setAdminNotice] = useState<any>(null);
-  const [academicSettings, setAcademicSettings] = useState({ session: "", semester: "" });
-  
+  const [academicSettings, setAcademicSettings] = useState<AcademicSettings>({ session: "", semester: "", welcomeMessage: "" });
+  const [welcomeHidden, setWelcomeHidden] = useState(false);
+  const [hocPost, setHocPost] = useState<string | null>(null);
+  const [hocChecked, setHocChecked] = useState(false);
+  const [dataReady, setDataReady] = useState(false);
+
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const returnRefHandled = useRef(false);
 
   const [profile, setProfile] = useState({
     fullName: "",
     matricNumber: "",
     level: "",
+    department: "",
     birthday: "",
     email: "",
     whatsappNumber: "",
@@ -83,6 +184,10 @@ const Dashboard = () => {
     const cleanPath = img.startsWith('/') ? img.substring(1) : img;
     return `${API_BASE}${cleanPath}`;
   };
+
+  const duesAmount = Number(fees?.dues ?? 0);
+  const duesPaid = hasPaidDues(payments, fees?.session);
+  const amountOwing = duesPaid ? 0 : duesAmount;
 
 
   // Helper to hash email for privacy
@@ -140,123 +245,189 @@ const Dashboard = () => {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, [showMobileMenu]);
 
-  useEffect(() => {
-    // Instant Loading from Cache
-    const cached = localStorage.getItem('dashboard_data');
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        const p = parsed.profile || parsed.data?.profile || {};
-        const rawImg = p.profile_image || p.image_path || null;
-        const roleVal = String(p.post || p.role || p.position || p.rank || p.title || "");
-        
-        setProfile(prev => ({
-          ...prev,
-          fullName: String(p.full_name || p.name || ""),
-          matricNumber: String(p.matric_number || p.matric_no || ""),
-          level: String(p.level || ""),
-          email: String(p.email || ""),
-          whatsappNumber: String(p.whatsapp_number || ""),
-          gender: String(p.gender || ""),
-          post: (roleVal.toLowerCase() !== 'student' && roleVal !== "") ? roleVal : "Student",
-          birthday: String(p.birthday || ""),
-          duesStatus: 'Paid',
-          idCardStatus: 'Ready',
-          attendance: Number(p.attendance_percentage || 0),
-          resources: Number(p.resources_count || 0),
-          profileImage: getProfileImage(rawImg)
-        }));
-        if (Array.isArray(parsed.activities)) {
-          setActivities(parsed.activities);
-        }
-        setLoading(false);
-      } catch (e) {
-        console.error("Cache Parse Error:", e);
-      }
-    }
+  // Map an API response (student or fresher) into component state.
+  const applyData = (dash: DashData, pay: PaymentRow[]) => {
+    const student = dash?.profile || {};
+    const roleVal = String(student.post || student.role || "");
+    const roleTitle = roleVal && roleVal.toLowerCase() !== 'student' ? roleVal : "Student";
+    const feeInfo = dash?.fees || null;
+    const matric = String(student.matric_number || student.matric_no || "");
+    const payList = Array.isArray(pay) ? pay : [];
+    const acad: AcademicSettings = {
+      session: String(dash?.academicSettings?.session || feeInfo?.session || ""),
+      semester: String(dash?.academicSettings?.semester || feeInfo?.semester || ""),
+      welcomeMessage: String(dash?.academicSettings?.welcomeMessage || feeInfo?.welcome_message || ""),
+    };
 
-    const fetchDashboardData = async () => {
-      try {
-        const [dashData, payData] = await Promise.all([
+    setAdminNotice(dash?.adminNotice || null);
+    setAcademicSettings(acad);
+    setFees(feeInfo);
+    setPayments(payList);
+    setActivities(Array.isArray(dash?.activities) ? dash.activities : []);
+    setProfile(prev => ({
+      ...prev,
+      fullName: String(student.full_name || student.name || ""),
+      matricNumber: matric,
+      level: String(student.level || ""),
+      department: String(student.department || ""),
+      email: String(student.email || ""),
+      whatsappNumber: String(student.whatsapp_number || ""),
+      gender: String(student.gender || ""),
+      post: roleTitle,
+      birthday: String(student.birthday || ""),
+      duesStatus: hasPaidDues(payList, feeInfo?.session) ? 'Paid' : 'Pending',
+      idCardStatus: deriveIdCardStatus(dash?.idCard, matric, isFresher),
+      attendance: Number(student.attendance_percentage || 0),
+      resources: Number(student.resources_count || 0),
+      profileImage: getProfileImage(String(student.profile_image || student.image_path || "") || null)
+    }));
+    return { student, roleTitle };
+  };
+
+  const fetchDashboardData = async () => {
+    try {
+      let dash: DashData;
+      let pay: PaymentRow[];
+      if (isFresher) {
+        const me = await fetchApi('/fresher/me');
+        dash = {
+          profile: me?.profile,
+          fees: me?.fees,
+          idCard: me?.idCard,
+          activities: [],
+          adminNotice: null,
+        };
+        pay = Array.isArray(me?.payments) ? me.payments : [];
+      } else {
+        const [d, p] = await Promise.all([
           fetchApi('/student/dashboard'),
           fetchApi('/student/payments')
         ]);
-
-        console.log("🔍 DEBUG: DASH DATA:", dashData);
-        setAdminNotice(dashData?.adminNotice || null);
-        setAcademicSettings(dashData?.academicSettings || { session: "", semester: "" });
-
-        // --- AGGRESSIVE ROLE DETECTION ---
-        // Look everywhere for 'post' or leadership titles
-        const rootPost = dashData?.post || dashData?.role || dashData?.position || (dashData?.data && (dashData.data.post || dashData.data.role || dashData.data.position));
-        const profilePost = (dashData?.profile && (dashData.profile.post || dashData.profile.role)) || 
-                           (dashData?.data && dashData.data.profile && (dashData.data.profile.post || dashData.data.profile.role));
-        const dataPost = dashData?.data && (dashData.data.post || dashData.data.role);
-        
-        const rawRole = rootPost || profilePost || dataPost || "";
-        const roleTitle = (rawRole && typeof rawRole === 'string' && rawRole.toLowerCase() !== 'student') ? rawRole : "Student";
-
-        // Normalize profile data (handle both {profile} and {data: {profile}})
-        const student = dashData?.profile || (dashData?.data && dashData.data.profile) || dashData?.data || {};
-        const rawImgUrl = student.profile_image || student.image_path || null;
-        const finalImgUrl = getProfileImage(rawImgUrl);
-
-        // Save to cache
-        localStorage.setItem('dashboard_data', JSON.stringify(dashData));
-        
-        // Update the 'user' object for the Navbar too
-        try {
-          const userStr = localStorage.getItem("user");
-          const user = (userStr && userStr !== "null") ? JSON.parse(userStr) : {};
-          if (user && typeof user === 'object') {
-            user.profile_image = finalImgUrl;
-            user.post = String(roleTitle);
-            localStorage.setItem("user", JSON.stringify(user));
-          }
-        } catch (e) {
-          console.error("User storage update error:", e);
-        }
-
-        const sessionPayment = {
-          payment_type: '2025/2026 Session Dues',
-          created_at: new Date().toISOString(),
-          amount: 2000 * 100 // Convert to Kobo so UI can /100 it
-        };
-
-        setProfile(prev => ({
-          ...prev,
-          fullName: String(student.full_name || student.name || ""),
-          matricNumber: String(student.matric_number || student.matric_no || ""),
-          level: String(student.level || ""),
-          email: String(student.email || ""),
-          whatsappNumber: String(student.whatsapp_number || ""),
-          gender: String(student.gender || ""),
-          post: String(roleTitle),
-          birthday: String(student.birthday || ""),
-          duesStatus: 'Paid',
-          idCardStatus: 'Ready',
-          attendance: Number(student.attendance_percentage || 0),
-          resources: Number(student.resources_count || 0),
-          profileImage: getProfileImage(student.profile_image || student.image_path)
-        }));
-        setActivities(Array.isArray(dashData?.activities) ? dashData.activities : []);
-        setPayments([sessionPayment, ...(Array.isArray(payData) ? payData : [])]);
-        setAmountOwing(0);
-      } catch (error: any) {
-        console.error("Dashboard Sync Error:", error);
-        if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
-          localStorage.clear();
-          navigate("/");
-        }
-      } finally {
-        setLoading(false);
+        dash = d;
+        pay = Array.isArray(p) ? p : [];
       }
-    };
 
-    fetchDashboardData();
+      const { student, roleTitle } = applyData(dash, pay);
+      const finalImgUrl = getProfileImage(String(student.profile_image || student.image_path || "") || null);
+
+      // Cache for an instant paint next time (always replaced by live data)
+      const stored = readStoredUser();
+      try {
+        localStorage.setItem('dashboard_data', JSON.stringify({ v: 2, uid: stored.id ?? null, fresher: isFresher, dash, pay }));
+      } catch (e) {
+        console.error("Cache write error:", e);
+      }
+
+      // Update the 'user' object for the Navbar too
+      try {
+        stored.profile_image = finalImgUrl;
+        stored.post = String(roleTitle);
+        localStorage.setItem("user", JSON.stringify(stored));
+      } catch (e) {
+        console.error("User storage update error:", e);
+      }
+    } catch (error: any) {
+      console.error("Dashboard Sync Error:", error);
+      if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+        localStorage.clear();
+        navigate("/");
+      }
+    } finally {
+      setLoading(false);
+      setDataReady(true);
+    }
+  };
+
+  useEffect(() => {
+    // Instant paint from cache (values are derived, never hardcoded), then live data replaces it
+    try {
+      const cached = localStorage.getItem('dashboard_data');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        const me = readStoredUser();
+        if (parsed?.v === 2 && parsed.fresher === isFresher && parsed.uid === (me.id ?? null) && parsed.dash) {
+          applyData(parsed.dash, Array.isArray(parsed.pay) ? parsed.pay : []);
+          setLoading(false);
+        }
+      }
+    } catch (e) {
+      console.error("Cache Parse Error:", e);
+    }
+
+    // Payment return: ?reference=... from Korapay
+    const params = new URLSearchParams(location.search);
+    const reference = params.get('reference');
+    if (reference && !returnRefHandled.current) {
+      returnRefHandled.current = true;
+      navigate('/dashboard', { replace: true, state: location.state });
+      (async () => {
+        try {
+          const result = await fetchApi(`/payments/verify/${encodeURIComponent(reference)}`);
+          const ok = result?.data?.status === 'success' || result?.status === 'success';
+          toast(ok
+            ? { title: "Payment successful", description: "Your payment has been confirmed." }
+            : { title: "Payment not completed", description: "We could not confirm this payment. If you were debited, contact the admin.", variant: "destructive" });
+        } catch (err: any) {
+          toast({ title: "Payment check failed", description: err.message || "Could not verify the payment.", variant: "destructive" });
+        }
+        await fetchDashboardData();
+      })();
+    } else {
+      fetchDashboardData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
-  const isProfileIncomplete = !profile.fullName || !profile.matricNumber || !profile.level || !profile.birthday;
+  // Quiet HOC check (non-freshers only)
+  useEffect(() => {
+    if (isFresher) {
+      setHocChecked(true);
+      return;
+    }
+    let cancelled = false;
+    fetchApi('/hoc/me')
+      .then((d) => { if (!cancelled) setHocPost(String(d?.post || 'HOC')); })
+      .catch(() => { /* not an HOC: no tab */ })
+      .finally(() => { if (!cancelled) setHocChecked(true); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Welcome card is dismissible per session
+  useEffect(() => {
+    if (!academicSettings.session) return;
+    try {
+      setWelcomeHidden(localStorage.getItem(`welcome_dismissed_${academicSettings.session}`) === "1");
+    } catch {
+      setWelcomeHidden(false);
+    }
+  }, [academicSettings.session]);
+
+  const dismissWelcome = () => {
+    setWelcomeHidden(true);
+    try {
+      localStorage.setItem(`welcome_dismissed_${academicSettings.session}`, "1");
+    } catch {
+      // storage unavailable
+    }
+  };
+
+  // Fall back to Overview if the saved tab is not available for this account
+  useEffect(() => {
+    if (activeTab === "profile" && isFresher) setActiveTab("overview");
+    if (activeTab === "hoc" && hocChecked && !hocPost) setActiveTab("overview");
+  }, [activeTab, hocChecked, hocPost, isFresher]);
+
+  const navItems: NavItem[] = [
+    { id: "overview", label: "Overview", short: "Home", icon: LayoutDashboard },
+    ...(isFresher ? [] : [{ id: "profile" as DashTab, label: "My Profile", short: "Profile", icon: User }]),
+    { id: "dues", label: "Dues & Fees", short: "Dues", icon: CreditCard },
+    { id: "idcard", label: "ID Card", short: "ID Card", icon: IdIcon },
+    { id: "materials", label: "Course Materials", short: "Materials", icon: BookOpen },
+    ...(hocPost ? [{ id: "hoc" as DashTab, label: hocPost, short: hocPost, icon: Users }] : []),
+  ];
+
+  const isProfileIncomplete = !isFresher && (!profile.fullName || !profile.matricNumber || !profile.level || !profile.birthday);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -284,7 +455,6 @@ const Dashboard = () => {
         method: 'PUT',
         body: JSON.stringify({
           full_name: profile.fullName,
-          level: profile.level,
           email: profile.email,
           whatsapp_number: profile.whatsappNumber,
           gender: profile.gender,
@@ -363,11 +533,7 @@ const Dashboard = () => {
       toast({ title: "Processing...", description: "Opening payment portal." });
       const data = await fetchApi('/payments/initialize', {
         method: 'POST',
-        body: JSON.stringify({
-          email: profile.email || `${profile.matricNumber}@lasustech.edu.ng`,
-          amount: 2000,
-          payment_type: 'nacos_dues'
-        })
+        body: JSON.stringify({ payment_type: 'dues' })
       });
       
       if (data.data?.authorization_url) {
@@ -377,28 +543,6 @@ const Dashboard = () => {
       }
     } catch (err: any) {
       toast({ title: "Payment Error", description: err.message || "Could not initialize payment.", variant: "destructive" });
-    }
-  };
-
-  const handleIdCardRequest = async () => {
-    try {
-      toast({ title: "Processing...", description: "Opening payment portal for ID replacement." });
-      const data = await fetchApi('/payments/initialize', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: profile.email || `${profile.matricNumber}@lasustech.edu.ng`,
-          amount: 500, // Replacement fee
-          payment_type: 'id_replacement'
-        })
-      });
-      
-      if (data.data?.authorization_url) {
-        window.location.href = data.data.authorization_url;
-      } else {
-        throw new Error(data.message || "Could not initialize replacement request.");
-      }
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Failed to initialize replacement request.", variant: "destructive" });
     }
   };
 
@@ -512,6 +656,10 @@ const Dashboard = () => {
             </h2>
             <div className="flex flex-col mt-1 animate-reveal-delay-1">
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">NACOS LASUSTECH</p>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                {profile.matricNumber ? `Matric: ${profile.matricNumber}` : "Matric number pending"}
+                {profile.level ? ` | ${profile.level}L` : ""}
+              </p>
               {profile.post && String(profile.post).toLowerCase() !== 'student' && (
                 <p className="text-[10px] text-primary uppercase tracking-widest font-black mt-1 drop-shadow-sm">{String(profile.post)}</p>
               )}
@@ -526,50 +674,20 @@ const Dashboard = () => {
               Back to Website
             </Link>
             <div className="h-px bg-border my-2 mx-3" />
-            <button
-              onClick={() => setActiveTab("overview")}
-              className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-300 ${
-                activeTab === "overview" 
-                  ? "bg-primary text-white shadow-lg shadow-primary/20" 
-                  : "text-muted-foreground hover:bg-white hover:text-foreground"
-              }`}
-            >
-              <LayoutDashboard className="h-4 w-4" />
-              Overview
-            </button>
-            <button
-              onClick={() => setActiveTab("profile")}
-              className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-300 ${
-                activeTab === "profile" 
-                  ? "bg-primary text-white shadow-lg shadow-primary/20" 
-                  : "text-muted-foreground hover:bg-white hover:text-foreground"
-              }`}
-            >
-              <User className="h-4 w-4" />
-              My Profile
-            </button>
-            <button
-              onClick={() => setActiveTab("dues")}
-              className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-300 ${
-                activeTab === "dues" 
-                  ? "bg-primary text-white shadow-lg shadow-primary/20" 
-                  : "text-muted-foreground hover:bg-white hover:text-foreground"
-              }`}
-            >
-              <CreditCard className="h-4 w-4" />
-              Dues & Fees
-            </button>
-            <button
-              onClick={() => setActiveTab("idcard")}
-              className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-300 ${
-                activeTab === "idcard" 
-                  ? "bg-primary text-white shadow-lg shadow-primary/20" 
-                  : "text-muted-foreground hover:bg-white hover:text-foreground"
-              }`}
-            >
-              <IdIcon className="h-4 w-4" />
-              ID Card
-            </button>
+            {navItems.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-300 ${
+                  activeTab === id 
+                    ? "bg-primary text-white shadow-lg shadow-primary/20" 
+                    : "text-muted-foreground hover:bg-white hover:text-foreground"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </button>
+            ))}
             
             <div className="pt-4 mt-4 border-t border-border">
               <button 
@@ -610,9 +728,26 @@ const Dashboard = () => {
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-primary">Current Academic Session</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {academicSettings.session || "Session not set"} {academicSettings.semester ? `| ${academicSettings.semester}` : ""}
+                  {academicSettings.session || "Session not set"}{academicSettings.semester ? ` | ${academicSettings.semester}` : ""}
                 </p>
               </div>
+            </div>
+          )}
+
+          {academicSettings.welcomeMessage && !welcomeHidden && (
+            <div className="mb-6 flex items-start justify-between gap-4 rounded-2xl border border-primary/15 bg-white p-5 text-foreground">
+              <div>
+                <p className="text-sm font-bold text-primary">Welcome to the new session{academicSettings.session ? ` ${academicSettings.session}` : ""}</p>
+                <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground">{academicSettings.welcomeMessage}</p>
+              </div>
+              <button
+                type="button"
+                onClick={dismissWelcome}
+                aria-label="Dismiss welcome message"
+                className="shrink-0 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           )}
 
@@ -655,7 +790,7 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <h3 className="text-sm font-bold">Membership Dues</h3>
-                      <p className="text-xs text-muted-foreground">Status: <span className="text-green-600 font-bold">Paid</span></p>
+                      <p className="text-xs text-muted-foreground">Status: <span className={`${duesPaid ? "text-green-600" : "text-amber-600"} font-bold`}>{duesPaid ? "Paid" : "Pending"}</span></p>
                     </div>
                   </div>
                   <Button onClick={() => setActiveTab("dues")} className="mt-6 w-full rounded-xl" variant="outline">View Dues History</Button>
@@ -668,7 +803,7 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <h3 className="text-sm font-bold">ID Card Status</h3>
-                      <p className="text-xs text-muted-foreground">Status: <span className="text-blue-600 font-bold">Ready</span></p>
+                      <p className="text-xs text-muted-foreground">Status: <span className={`${idStatusColor(profile.idCardStatus)} font-bold`}>{profile.idCardStatus}</span></p>
                     </div>
                   </div>
                   <Button onClick={() => setActiveTab("idcard")} className="mt-6 w-full rounded-xl" variant="outline">Manage ID Card</Button>
@@ -710,7 +845,7 @@ const Dashboard = () => {
                     <LayoutDashboard className="h-8 w-8" />
                   </div>
                   <h3 className="font-display text-xl font-bold text-primary">Member Status</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">You are a fully verified member of NACOS LASUSTECH for the 2025/2026 session.</p>
+                  <p className="mt-2 text-sm text-muted-foreground">You are a fully verified member of NACOS LASUSTECH {academicSettings.session ? `for the ${academicSettings.session} session` : "this session"}.</p>
                   
                   <div className="mt-8 p-4 rounded-2xl bg-white border border-primary/10">
                     <p className="text-[10px] font-bold uppercase text-muted-foreground">Resources Accessed</p>
@@ -725,7 +860,7 @@ const Dashboard = () => {
             </div>
           )}
 
-          {activeTab === "profile" && (
+          {activeTab === "profile" && !isFresher && (
             <div className="max-w-3xl animate-reveal pb-12">
               <h2 className="font-display text-3xl font-bold text-foreground">My Profile</h2>
               <p className="mt-2 text-muted-foreground">Manage your personal information and chapter membership details.</p>
@@ -847,12 +982,9 @@ const Dashboard = () => {
                       <div className="space-y-2">
                         <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Current Level</label>
                         <Input 
-                          value={profile.level} 
-                          onChange={(e) => {
-                            setProfile({ ...profile, level: e.target.value });
-                            setIsDirty(true);
-                          }}
-                          className="rounded-xl border-border/60"
+                          value={profile.level ? `${profile.level}L` : ""} 
+                          className="rounded-xl border-border/60 bg-muted/30"
+                          disabled
                         />
                       </div>
                       <div className="space-y-2">
@@ -911,10 +1043,10 @@ const Dashboard = () => {
                   <div className="flex items-center justify-between border-b border-border pb-6">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Amount Owing</p>
-                      <p className="mt-1 font-display text-3xl font-bold text-foreground">₦{String(amountOwing.toLocaleString())}</p>
+                      <p className="mt-1 font-display text-3xl font-bold text-foreground">{fees ? `₦${amountOwing.toLocaleString()}` : "..."}</p>
                     </div>
-                    <div className={`rounded-xl px-4 py-2 text-xs font-bold ${profile.duesStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {profile.duesStatus}
+                    <div className={`rounded-xl px-4 py-2 text-xs font-bold ${duesPaid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {duesPaid ? 'Paid' : 'Pending'}
                     </div>
                   </div>
 
@@ -922,23 +1054,32 @@ const Dashboard = () => {
                     <h3 className="font-display text-lg font-bold text-foreground">Payment History</h3>
                     <div className="mt-4 space-y-4">
                       {payments.length > 0 ? (
-                        payments.map((pay, i) => (
-                          <div key={i} className="flex items-center justify-between rounded-2xl bg-muted/30 p-4">
-                            <div className="flex items-center gap-4">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm text-primary">
-                                <Check className="h-5 w-5" />
+                        payments.map((pay, i) => {
+                          const ok = pay.status === 'success';
+                          const failed = pay.status === 'failed';
+                          return (
+                            <div key={pay.id ?? pay.reference ?? i} className="flex items-center justify-between rounded-2xl bg-muted/30 p-4">
+                              <div className="flex items-center gap-4">
+                                <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm ${ok ? 'text-primary' : failed ? 'text-red-600' : 'text-amber-600'}`}>
+                                  {ok ? <Check className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold">{paymentLabel(pay)}</p>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    {pay.created_at ? new Date(pay.created_at).toLocaleDateString() : 'Recent'}
+                                    {pay.session ? ` | ${pay.session}` : ''}
+                                  </p>
+                                </div>
                               </div>
-                              <div>
-                                <p className="text-sm font-bold capitalize">{String(pay.payment_type || 'Payment').replace('_', ' ')}</p>
-                                <p className="text-[11px] text-muted-foreground">{pay.created_at ? new Date(pay.created_at).toLocaleDateString() : 'Recent'}</p>
+                              <div className="text-right">
+                                <p className="text-sm font-bold text-foreground">₦{Number(pay.amount || 0).toLocaleString()}</p>
+                                <p className={`text-[10px] font-medium capitalize ${ok ? 'text-green-600' : failed ? 'text-red-600' : 'text-amber-600'}`}>
+                                  {ok ? 'Successful' : pay.status}
+                                </p>
                               </div>
                             </div>
-                            <div className="text-right">
-                              <p className="text-sm font-bold text-foreground">₦{(pay.amount / 100).toLocaleString()}</p>
-                              <p className="text-[10px] font-medium text-green-600">Successful</p>
-                            </div>
-                          </div>
-                        ))
+                          );
+                        })
                       ) : (
                         <div className="flex flex-col items-center justify-center py-10 text-center">
                           <CreditCard className="h-10 w-10 text-muted-foreground/30" />
@@ -953,14 +1094,14 @@ const Dashboard = () => {
                   <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
                     <h3 className="font-display text-lg font-bold text-foreground">Online Payment</h3>
                     <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-                      Instant verification. Skip the wait and pay your ₦2,000 session dues via Korapay.
+                      Instant verification. Skip the wait and pay your {fees ? `₦${duesAmount.toLocaleString()} ` : ""}session dues via Korapay.
                     </p>
                     <Button 
                       onClick={handlePayment} 
                       className="mt-6 w-full rounded-xl shadow-lg shadow-primary/20"
-                      disabled={profile.duesStatus === 'Paid'}
+                      disabled={duesPaid || !fees}
                     >
-                      {profile.duesStatus === 'Paid' ? 'Dues Already Paid' : 'Pay Now with Korapay'}
+                      {duesPaid ? 'Dues Already Paid' : 'Pay Now with Korapay'}
                     </Button>
                     <p className="mt-4 text-center text-[10px] text-muted-foreground">
                       Powered by <strong>Korapay</strong>. All transactions are secure.
@@ -973,123 +1114,37 @@ const Dashboard = () => {
 
           {activeTab === "idcard" && (
             <div className="max-w-3xl animate-reveal pb-12">
-              <h2 className="font-display text-3xl font-bold text-foreground">ID Card Management</h2>
-              <p className="mt-2 text-sm text-muted-foreground">Your official NACOS LASUSTECH identification card is just a few steps away.</p>
+              <IdCardApplication />
+            </div>
+          )}
 
-              <div className="mt-8">
-                <div className="rounded-3xl border border-border bg-card p-8 shadow-sm">
-                  <div className="flex flex-col items-center text-center border-b border-border pb-10">
-                    <div className={`relative flex h-20 w-20 items-center justify-center rounded-full border-4 ${profile.profileImage ? 'border-green-500 bg-green-50' : 'border-amber-500 bg-amber-50'}`}>
-                      <IdIcon className={`h-10 w-10 ${profile.profileImage ? 'text-green-500' : 'text-amber-500'}`} />
-                    </div>
-                    <h3 className="mt-4 font-display text-2xl font-bold">Registration Checklist</h3>
-                    <p className="mt-2 text-sm text-muted-foreground max-w-sm">
-                      Complete the requirements below to receive your digital and physical ID card.
-                    </p>
-                  </div>
+          {activeTab === "materials" && (
+            <div className="max-w-4xl animate-reveal pb-12">
+              <MaterialsPanel />
+            </div>
+          )}
 
-                  <div className="mt-10 space-y-6">
-                    <div className="flex items-center justify-between p-2">
-                      <div className="flex items-center gap-4">
-                        <div className={`flex h-8 w-8 items-center justify-center rounded-full ${profile.fullName && profile.level ? 'bg-green-100 text-green-600' : 'bg-muted text-muted-foreground'}`}>
-                          {profile.fullName && profile.level ? <Check className="h-4 w-4" /> : <User className="h-4 w-4" />}
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold">Profile Information</p>
-                          <p className="text-[10px] text-muted-foreground">Name, Level, and Matric Number</p>
-                        </div>
-                      </div>
-                      <span className={`text-[10px] font-bold uppercase tracking-widest ${profile.fullName && profile.level ? 'text-green-600' : 'text-amber-600'}`}>
-                        {profile.fullName && profile.level ? 'Verified' : 'Incomplete'}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between p-2">
-                      <div className="flex items-center gap-4">
-                        <div className={`flex h-8 w-8 items-center justify-center rounded-full ${profile.profileImage ? 'bg-green-100 text-green-600' : 'bg-muted text-muted-foreground'}`}>
-                          {profile.profileImage ? <Check className="h-4 w-4" /> : <Calendar className="h-4 w-4" />}
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold">Passport Photo</p>
-                          <p className="text-[10px] text-muted-foreground">Professional clear background image</p>
-                        </div>
-                      </div>
-                      <span className={`text-[10px] font-bold uppercase tracking-widest ${profile.profileImage ? 'text-green-600' : 'text-amber-600'}`}>
-                        {profile.profileImage ? 'Uploaded' : 'Missing'}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between p-2">
-                      <div className="flex items-center gap-4">
-                        <div className={`flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground`}>
-                          <CreditCard className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold">ID Card Processing Fee</p>
-                          <p className="text-[10px] text-muted-foreground">Standard processing & printing fee</p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-amber-600">
-                        Required (₦500)
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mt-10 p-6 rounded-2xl bg-primary/5 border border-primary/10">
-                    <p className="text-xs text-center text-muted-foreground leading-relaxed">
-                      Once payment is verified, your ID card will be processed and available for digital download and physical collection.
-                    </p>
-                    <Button 
-                      onClick={handleIdCardRequest}
-                      className="mt-6 w-full rounded-2xl py-6 text-lg font-bold shadow-xl shadow-primary/20"
-                    >
-                      Pay for ID Card (₦500)
-                    </Button>
-                  </div>
-                </div>
-              </div>
+          {activeTab === "hoc" && hocPost && (
+            <div className="max-w-4xl animate-reveal pb-12">
+              <HocPanel />
             </div>
           )}
         </main>
 
         {/* Mobile Bottom Navigation - Moved to absolute bottom for visibility */}
-        <nav className="fixed bottom-0 left-0 right-0 z-[100] flex w-full items-center justify-around border-t border-border bg-background/95 px-2 py-3 pb-safe backdrop-blur-lg lg:hidden shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
-          <button
-            onClick={() => setActiveTab("overview")}
-            className={`flex flex-col items-center gap-1 px-3 py-1 transition-all duration-300 ${
-              activeTab === "overview" ? "text-primary scale-110" : "text-muted-foreground"
-            }`}
-          >
-            <LayoutDashboard className="h-5 w-5" />
-            <span className="text-[10px] font-bold">Home</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("profile")}
-            className={`flex flex-col items-center gap-1 px-3 py-1 transition-all duration-300 ${
-              activeTab === "profile" ? "text-primary scale-110" : "text-muted-foreground"
-            }`}
-          >
-            <User className="h-5 w-5" />
-            <span className="text-[10px] font-bold">Profile</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("dues")}
-            className={`flex flex-col items-center gap-1 px-3 py-1 transition-all duration-300 ${
-              activeTab === "dues" ? "text-primary scale-110" : "text-muted-foreground"
-            }`}
-          >
-            <CreditCard className="h-5 w-5" />
-            <span className="text-[10px] font-bold">Dues</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("idcard")}
-            className={`flex flex-col items-center gap-1 px-3 py-1 transition-all duration-300 ${
-              activeTab === "idcard" ? "text-primary scale-110" : "text-muted-foreground"
-            }`}
-          >
-            <IdIcon className="h-5 w-5" />
-            <span className="text-[10px] font-bold">ID Card</span>
-          </button>
+        <nav className="fixed bottom-0 left-0 right-0 z-[100] flex w-full items-center gap-1 overflow-x-auto border-t border-border bg-background/95 px-2 py-3 pb-safe backdrop-blur-lg lg:hidden shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+          {navItems.map(({ id, short, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`flex min-w-[64px] flex-1 shrink-0 flex-col items-center gap-1 px-3 py-1 transition-all duration-300 ${
+                activeTab === id ? "text-primary scale-110" : "text-muted-foreground"
+              }`}
+            >
+              <Icon className="h-5 w-5" />
+              <span className="whitespace-nowrap text-[10px] font-bold">{short}</span>
+            </button>
+          ))}
         </nav>
       </div>
     </Layout>

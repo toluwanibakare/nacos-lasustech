@@ -1,9 +1,11 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 export const VOTING_API_BASE_URL = import.meta.env.VITE_VOTING_API_URL || 'http://localhost:5050/api/voting';
 
-export const isAwardsHost = (): boolean => {
-  return window.location.hostname.includes("awards") || window.location.hash.includes("awards-mode") || window.location.search.includes("awards=true");
-};
+// Voting / awards is switched off, so the awards site mode is never active.
+// export const isAwardsHost = (): boolean => {
+//   return window.location.hostname.includes("awards") || window.location.hash.includes("awards-mode") || window.location.search.includes("awards=true");
+// };
+export const isAwardsHost = (): boolean => false;
 
 export const resolveImageUrl = (path: string | null | undefined): string => {
   if (!path) return "";
