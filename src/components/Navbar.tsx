@@ -249,11 +249,11 @@ const Navbar = () => {
         />
 
         <div 
-          className={`fixed inset-x-0 top-0 z-50 transform border-b border-border/70 bg-white/95 backdrop-blur-xl transition-transform duration-500 ease-out lg:hidden ${
+          className={`fixed inset-x-0 top-0 z-[60] max-h-[100dvh] overflow-y-auto overscroll-contain transform border-b border-border/70 bg-white/95 backdrop-blur-xl transition-transform duration-500 ease-out lg:hidden ${
             mobileOpen ? "translate-y-0" : "-translate-y-full"
           }`}
         >
-          <div className="container py-6">
+          <div className="container pb-[max(2rem,env(safe-area-inset-bottom))] pt-6">
             <div className="flex items-center justify-between pb-6 border-b border-border/50">
               <div className="flex items-center gap-3">
                 {localStorage.getItem("isLoggedIn") === "true" ? (
@@ -370,13 +370,13 @@ const Navbar = () => {
               })}
             </div>
 
-            <div className={`mt-8 pt-6 border-t border-border/50 transition-all duration-500 delay-300 ${
+            <div className={`mt-6 pt-6 border-t border-border/50 transition-all duration-500 delay-300 ${
               mobileOpen ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
             }`}>
               {isAwardsHost() ? (
                 <a
                   href="https://nacoslasustech.org.ng"
-                  className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-[#1F5FAF] text-base font-bold text-white shadow-xl shadow-blue-500/20 hover:bg-[#184d90]"
+                  className="flex h-14 w-full items-center justify-center gap-3 rounded-full bg-[#1F5FAF] text-base font-bold text-white hover:bg-[#184d90]"
                 >
                   Visit Main Website
                 </a>
@@ -386,7 +386,7 @@ const Navbar = () => {
                     localStorage.removeItem("isLoggedIn");
                     window.location.href = "/";
                   }}
-                  className="h-14 w-full gap-3 rounded-2xl bg-red-500 text-base font-bold text-white shadow-xl shadow-red-500/20 hover:bg-red-600"
+                  className="h-14 w-full gap-3 rounded-full bg-red-500 text-base font-bold text-white hover:bg-red-600"
                 >
                   <LogOut className="h-5 w-5" />
                   Logout Account
@@ -397,7 +397,7 @@ const Navbar = () => {
                     setMobileOpen(false);
                     setLoginOpen(true);
                   }}
-                  className="h-14 w-full gap-3 rounded-2xl bg-[#1F5FAF] text-base font-bold text-white shadow-xl shadow-blue-500/20 hover:bg-[#184d90]"
+                  className="h-14 w-full gap-3 rounded-full bg-[#1F5FAF] text-base font-bold text-white hover:bg-[#184d90]"
                 >
                   <LogIn className="h-5 w-5" />
                   Access Member Portal
