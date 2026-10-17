@@ -53,7 +53,7 @@ const Contact = () => {
                 {[
                   { icon: Mail, label: "Email", value: "nacoslasustech01@gmail.com" },
                   { icon: MapPin, label: "Address", value: "Lagos State University of Science and Technology, Ikorodu, Lagos State" },
-                  { icon: Phone, label: "Phone", value: "+234 814 429 6322" },
+                  { icon: Phone, label: "Phone", value: "+234 802 632 2742" },
                 ].map((item) => (
                   <div key={item.label} className="flex items-start gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/8 text-primary">
