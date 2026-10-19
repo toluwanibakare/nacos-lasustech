@@ -50,7 +50,7 @@ const Constitution = () => {
                   </p>
                   <p>
                     <strong>Section 3: Definition</strong><br />
-                    For the purpose of this constitution, <strong>Computing</strong> shall be defined to include disciplines such as <strong>Computer Science, Information Technology, Software Engineering, Cybersecurity, Data Science</strong>, and all other IT-related disciplines within the Lagos State University of Science and Technology.
+                    For the purpose of this constitution, <strong>Computing</strong> shall be defined to include the departments of <strong>Computer Science, Software Engineering and Cyber Security</strong>, and any other computing department the University may add to the chapter.
                   </p>
                 </div>
               </div>

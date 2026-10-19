@@ -7,6 +7,9 @@ import {
   IdCard,
   BookOpen,
   ChevronRight,
+  Cpu,
+  Code2,
+  ShieldCheck,
 } from "lucide-react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -38,6 +41,24 @@ const quickActions = [
 ];
 
 const galleryImages = [moment1, moment2, moment3, moment4];
+
+const departments = [
+  {
+    name: "Computer Science",
+    icon: Cpu,
+    blurb: "Algorithms, systems and the theory behind computing, from programming fundamentals to artificial intelligence and data.",
+  },
+  {
+    name: "Software Engineering",
+    icon: Code2,
+    blurb: "Designing, building, testing and shipping reliable software products in teams, the way industry does it.",
+  },
+  {
+    name: "Cyber Security",
+    icon: ShieldCheck,
+    blurb: "Protecting systems, networks and people: secure design, ethical hacking, digital forensics and defence.",
+  },
+];
 
 const Index = () => {
   const [loginOpen, setLoginOpen] = useState(false);
@@ -298,6 +319,30 @@ const Index = () => {
               </motion.div>
             </div>
             </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* Departments */}
+      <section className="border-t border-border/50 py-16 md:py-24 lg:py-28">
+        <div className="container">
+          <SectionHeading
+            label="Our Departments"
+            title="Three Departments, One Community"
+            description="Every NACOS LASUSTECH member belongs to one of these departments."
+          />
+          <div className="mt-10 grid gap-5 md:grid-cols-3">
+            {departments.map((dept, index) => (
+              <Reveal key={dept.name} delay={index * 0.08} y={20} className="h-full">
+                <div className="flex h-full flex-col rounded-3xl border border-border bg-muted/40 p-6 transition-colors duration-300 hover:border-primary/40 md:p-7">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <dept.icon className="h-6 w-6" />
+                  </span>
+                  <h3 className="mt-5 font-display text-lg font-bold text-foreground">{dept.name}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{dept.blurb}</p>
+                </div>
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>
