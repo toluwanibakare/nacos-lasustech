@@ -4,7 +4,7 @@ import MaterialsPanel from "@/components/MaterialsPanel";
 import HocPanel from "@/components/HocPanel";
 import { salesToCsv, MaterialSale } from "@/lib/materials";
 
-const base = { level: "100", department: "Artificial Intelligence", status: "active", session: "2026/2027", description: null, file_path: null, file_name: null, file_size: null, file_type: null };
+const base = { level: "100", department: "Cyber Security", status: "active", session: "2026/2027", description: null, file_path: null, file_name: null, file_size: null, file_type: null };
 const items = [
   { ...base, id: 1, kind: "notes", title: "Week 1 Notes", course_code: "CSC101", price: 0, file_url: "https://files.test/a.pdf", file_name: "a.pdf", file_size: 482000, paid: false, received: false },
   { ...base, id: 2, kind: "notes", title: "Algorithms Notes", course_code: "CSC102", price: 0, file_url: "https://files.test/b.docx", file_name: "b.docx", file_size: 91000, paid: false, received: false },
@@ -90,7 +90,7 @@ describe("student library", () => {
 
 describe("HOC tools", () => {
   const hocRoutes = () => ({
-    "/hoc/me": () => ({ full_name: "Ada Hoc", level: "100", department: "Artificial Intelligence", post: "HOC", is_hoc: true }),
+    "/hoc/me": () => ({ full_name: "Ada Hoc", level: "100", department: "Cyber Security", post: "HOC", is_hoc: true }),
     "/hoc/items": () => items.map((i) => ({ ...i, buyers: i.id === 60 ? 3 : 0, received_count: i.id === 60 ? 1 : 0, revenue: i.id === 60 ? 7500 : 0 })),
     "/hoc/items/60/sales": () => sales.map((s) => ({ ...s })),
   });
@@ -99,7 +99,7 @@ describe("HOC tools", () => {
     respond({ ...hocRoutes(), "POST /hoc/items": () => ({ __status: 201, body: { item: { id: 9 }, campaign: null } }) });
     const { container } = render(<HocPanel />);
     await waitFor(() => screen.getByText(/Free to download/i));
-    expect(screen.getAllByText(/100 Level, Artificial Intelligence/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/100 Level, Cyber Security/).length).toBeGreaterThan(0);
 
     // free: pick Notes -> file field appears, no price field
     fireEvent.click(screen.getByRole("button", { name: "Notes" }));

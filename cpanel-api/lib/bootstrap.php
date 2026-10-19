@@ -12,7 +12,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 const UPLOAD_MAX_BYTES = 2 * 1024 * 1024;
 const UPLOAD_MIMES = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
-const DEPARTMENTS_FALLBACK = ['Computer Science', 'Software Engineering', 'Artificial Intelligence'];
+const DEPARTMENTS_FALLBACK = ['Computer Science', 'Software Engineering', 'Cyber Security'];
 
 function json_out($data, int $code = 200): never
 {
