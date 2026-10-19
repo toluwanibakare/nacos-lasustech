@@ -163,6 +163,7 @@ if ($method === 'GET' && $action === 'get_fees') {
         'dues' => (float) setting($pdo, 'fee_dues', '2000'),
         'departments' => allowed_departments($pdo),
         'welcome_message' => setting($pdo, 'welcome_message', ''),
+        'community_link' => setting($pdo, 'whatsapp_community_link', ''),
     ]);
 }
 
@@ -206,6 +207,14 @@ if ($action === 'update_academic_settings') {
     }
     if (array_key_exists('welcome_message', $in)) {
         $stmt->execute(['welcome_message', mb_substr(trim((string) $in['welcome_message']), 0, 500), 'academic']);
+    }
+    if (array_key_exists('community_link', $in)) {
+        $link = trim((string) $in['community_link']);
+        // Empty hides the button; otherwise it must be a WhatsApp group or channel link.
+        if ($link !== '' && !preg_match('#^https://(chat\.whatsapp\.com|whatsapp\.com/channel)/[A-Za-z0-9_\-/]+$#', $link)) {
+            fail('Enter a WhatsApp group link that starts with https://chat.whatsapp.com/');
+        }
+        $stmt->execute(['whatsapp_community_link', $link, 'academic']);
     }
     json_out(['status' => 'success']);
 }

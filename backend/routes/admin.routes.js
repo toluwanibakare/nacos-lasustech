@@ -177,7 +177,7 @@ router.get('/settings/academic', async (_req, res, next) => {
 
 router.put('/settings/academic', async (req, res, next) => {
   try {
-    const { session, semester, welcomeMessage } = req.body;
+    const { session, semester, welcomeMessage, communityLink } = req.body;
 
     if (!session || !semester) {
       res.status(422).json({ message: 'Session and semester are required.' });
@@ -188,6 +188,7 @@ router.put('/settings/academic', async (req, res, next) => {
       session: String(session).trim(),
       semester: String(semester).trim(),
       welcomeMessage: welcomeMessage === undefined ? undefined : String(welcomeMessage),
+      communityLink: communityLink === undefined ? undefined : String(communityLink),
     });
 
     res.json(updated);

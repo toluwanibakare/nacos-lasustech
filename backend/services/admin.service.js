@@ -376,6 +376,7 @@ export const getAcademicSettings = async () => {
       session: fees.session,
       semester: fees.semester,
       welcomeMessage: fees.welcome_message || '',
+      communityLink: fees.community_link || '',
     };
   } catch (error) {
     console.warn('⚠️ Could not read academic settings from central system:', error.message);
@@ -383,11 +384,12 @@ export const getAcademicSettings = async () => {
   }
 };
 
-export const updateAcademicSettings = async ({ session, semester, welcomeMessage }) => {
+export const updateAcademicSettings = async ({ session, semester, welcomeMessage, communityLink }) => {
   await centralPost('update_academic_settings', {
     session,
     semester,
     ...(welcomeMessage !== undefined ? { welcome_message: welcomeMessage } : {}),
+    ...(communityLink !== undefined ? { community_link: communityLink } : {}),
   });
   return getAcademicSettings();
 };

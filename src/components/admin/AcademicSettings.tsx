@@ -19,6 +19,7 @@ const AcademicSettings = () => {
   const [session, setSession] = useState("");
   const [semester, setSemester] = useState("First Semester");
   const [welcome, setWelcome] = useState("");
+  const [community, setCommunity] = useState("");
   const [stalite, setStalite] = useState("");
   const [fresher, setFresher] = useState("");
   const [dues, setDues] = useState("");
@@ -32,6 +33,7 @@ const AcademicSettings = () => {
       setSession(academic.data.session || "");
       setSemester(academic.data.semester || "First Semester");
       setWelcome(academic.data.welcomeMessage || "");
+      setCommunity(academic.data.communityLink || "");
     }
   }, [academic.data]);
 
@@ -51,7 +53,7 @@ const AcademicSettings = () => {
     }
     setAcademicErr(null);
     const ok = await run(
-      () => adminFetch("/admin/settings/academic", { method: "PUT", body: JSON.stringify({ session: session.trim(), semester, welcomeMessage: welcome }) }),
+      () => adminFetch("/admin/settings/academic", { method: "PUT", body: JSON.stringify({ session: session.trim(), semester, welcomeMessage: welcome, communityLink: community.trim() }) }),
       "Academic settings saved.",
     );
     setAcademicSaved(ok);
@@ -101,6 +103,11 @@ const AcademicSettings = () => {
         <div className="mt-4">
           <Field label="Welcome message" hint="Shown on student dashboards.">
             <Textarea rows={4} value={welcome} onChange={(e) => { setWelcome(e.target.value); setAcademicSaved(false); }} />
+          </Field>
+        </div>
+        <div className="mt-4">
+          <Field label="WhatsApp community link" hint="Members see a Join the community button on their portal. Leave empty to hide it.">
+            <Input className="rounded-full" placeholder="https://chat.whatsapp.com/..." value={community} onChange={(e) => { setCommunity(e.target.value); setAcademicSaved(false); }} />
           </Field>
         </div>
         {academicErr && <p className="mt-3 text-sm text-red-700">{academicErr}</p>}

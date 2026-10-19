@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Check, CreditCard, IdCard as IdIcon, LayoutDashboard, LogOut, User, AlertCircle, Save, Calendar, Home, Lock, BookOpen, Users, X, Download } from "lucide-react";
+import { Check, CreditCard, IdCard as IdIcon, LayoutDashboard, LogOut, User, AlertCircle, Save, Calendar, Home, Lock, BookOpen, Users, X, Download, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -43,6 +43,7 @@ interface Fees {
   id_card_stalite?: number | string;
   id_card_fresher?: number | string;
   welcome_message?: string;
+  community_link?: string;
 }
 
 interface AcademicSettings {
@@ -788,6 +789,28 @@ const Dashboard = () => {
                   Welcome back, <span className="text-primary font-semibold">{String(profile.fullName || "Member")}</span>. Here's what's happening today.
                 </p>
               </div>
+
+              {fees?.community_link && (
+                <div className="flex flex-col gap-4 rounded-3xl border border-green-200 bg-green-50/60 p-5 sm:flex-row sm:items-center sm:justify-between md:p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-green-600 text-white">
+                      <MessageCircle className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground">Join the NACOS community</h3>
+                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">Get announcements, course updates and meet other members on WhatsApp.</p>
+                    </div>
+                  </div>
+                  <a
+                    href={fees.community_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-green-600 px-6 text-sm font-bold text-white transition-colors hover:bg-green-700 sm:h-11 sm:w-auto"
+                  >
+                    <MessageCircle className="h-5 w-5" /> Join on WhatsApp
+                  </a>
+                </div>
+              )}
 
               <div className="grid gap-6 sm:grid-cols-2">
                 <div className="rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:shadow-md">
