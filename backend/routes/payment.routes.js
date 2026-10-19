@@ -280,24 +280,29 @@ router.post('/webhook', async (req, res) => {
 /**
  * Receipts
  * ---------------------------------------------------------
- * Dues and the ID card go together: anyone who has an ID card application can only get a
- * dues or ID card receipt once BOTH are cleared (dues paid or exempt, ID card paid). People
- * without an ID card application are not held back. Other payments (course materials) are free of this.
+ * Dues and the ID card go together: a dues or ID card receipt is only released once BOTH are
+ * cleared (dues paid or exempt, ID card paid). Someone who has paid dues cannot print the dues
+ * receipt until their ID card is paid too. Other payments (course materials) are free of this.
  */
 const TIED_TYPES = ['dues', 'id_card'];
 
 const clearanceFor = async (user) => {
   const idStatus = await centralGet('id_card_status', identityParams(user));
-  const tied = !!idStatus.request;
+  const hasApplication = !!idStatus.request;
   const duesCleared = !!idStatus.dues_cleared;
-  const idCleared = tied && idStatus.request.status !== 'awaiting_payment';
-  return { tied, duesCleared, idCleared, duesExempt: !!idStatus.dues_exempt };
+  const idCleared = hasApplication && idStatus.request.status !== 'awaiting_payment';
+  return { tied: true, hasApplication, duesCleared, idCleared, duesExempt: !!idStatus.dues_exempt };
 };
 
 const lockedReason = (c) => {
-  if (!c.tied || (c.duesCleared && c.idCleared)) return null;
+  if (c.duesCleared && c.idCleared) return null;
   if (!c.duesCleared && !c.idCleared) return 'Pay your dues and your ID card fee to unlock this receipt.';
-  return c.duesCleared ? 'Pay your ID card fee to unlock this receipt.' : 'Pay your dues to unlock this receipt.';
+  if (c.duesCleared) {
+    return c.hasApplication
+      ? 'Pay your ID card fee to unlock this receipt.'
+      : 'Apply for your ID card and pay the fee in the ID Card tab to unlock this receipt.';
+  }
+  return 'Pay your dues to unlock this receipt.';
 };
 
 router.get('/receipt-status', protect, async (req, res) => {

@@ -15,6 +15,7 @@ export interface ReceiptData {
 
 export interface ReceiptStatus {
   tied: boolean;
+  hasApplication?: boolean;
   duesCleared: boolean;
   idCleared: boolean;
   duesExempt: boolean;

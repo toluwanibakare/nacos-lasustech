@@ -1071,7 +1071,7 @@ const Dashboard = () => {
                           const ok = pay.status === 'success';
                           const failed = pay.status === 'failed';
                           return (
-                            <div key={pay.id ?? pay.reference ?? i} className="flex items-center justify-between rounded-2xl bg-muted/30 p-4">
+                            <div key={pay.id ?? pay.reference ?? i} className="flex flex-wrap items-center justify-between gap-y-3 rounded-2xl bg-muted/30 p-4">
                               <div className="flex items-center gap-4">
                                 <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm ${ok ? 'text-primary' : failed ? 'text-red-600' : 'text-amber-600'}`}>
                                   {ok ? <Check className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
@@ -1086,27 +1086,31 @@ const Dashboard = () => {
                               </div>
                               <div className="text-right">
                                 <p className="text-sm font-bold text-foreground">₦{Number(pay.amount || 0).toLocaleString()}</p>
-                                {ok && ['dues', 'id_card', 'id_replacement', 'hoc_item'].includes(pay.payment_type) && (() => {
-                                  const tied = pay.payment_type === 'dues' || pay.payment_type === 'id_card';
-                                  const locked = tied ? receiptStatus?.locked_reason : null;
-                                  const ref = pay.charge_reference || pay.reference || '';
-                                  return (
-                                    <button
-                                      type="button"
-                                      disabled={!!locked || receiptBusy === ref}
-                                      title={locked || "Download receipt"}
-                                      onClick={() => getReceipt(pay)}
-                                      className="mt-1 inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-0.5 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:text-muted-foreground disabled:opacity-60"
-                                    >
-                                      {locked ? <Lock className="h-3 w-3" /> : <Download className="h-3 w-3" />}
-                                      {receiptBusy === ref ? "Preparing..." : "Receipt"}
-                                    </button>
-                                  );
-                                })()}
                                 <p className={`text-[10px] font-medium capitalize ${ok ? 'text-green-600' : failed ? 'text-red-600' : 'text-amber-600'}`}>
                                   {ok ? 'Successful' : pay.status}
                                 </p>
                               </div>
+                              {ok && ['dues', 'id_card', 'id_replacement', 'hoc_item'].includes(pay.payment_type) && (() => {
+                                const tied = pay.payment_type === 'dues' || pay.payment_type === 'id_card';
+                                const locked = tied ? receiptStatus?.locked_reason : null;
+                                const ref = pay.charge_reference || pay.reference || '';
+                                return (
+                                  <div className="basis-full">
+                                    <button
+                                      type="button"
+                                      disabled={!!locked || receiptBusy === ref}
+                                      onClick={() => getReceipt(pay)}
+                                      className={`flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-bold transition-colors sm:h-11 ${
+                                        locked ? 'cursor-not-allowed bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-70'
+                                      }`}
+                                    >
+                                      {locked ? <Lock className="h-5 w-5" /> : <Download className="h-5 w-5" />}
+                                      {receiptBusy === ref ? "Preparing receipt..." : locked ? "Receipt locked" : "Download receipt (PDF)"}
+                                    </button>
+                                    {locked && <p className="mt-2 text-center text-xs leading-relaxed text-amber-800">{locked}</p>}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           );
                         })
@@ -1145,7 +1149,7 @@ const Dashboard = () => {
                         </p>
                       </div>
                     )}
-                    {receiptStatus?.tied && receiptStatus.locked_reason && (
+                    {receiptStatus?.locked_reason && payments.some((p) => p.status === 'success' && (p.payment_type === 'dues' || p.payment_type === 'id_card')) && (
                       <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-center text-[11px] leading-relaxed text-amber-800">
                         Dues and your ID card go together. {receiptStatus.locked_reason}
                       </p>
