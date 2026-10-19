@@ -10,6 +10,7 @@ import { API_BASE_URL, fetchApi } from "@/lib/api";
 import PhotoCropEditor from "@/components/PhotoCropEditor";
 import { PhotoCrop, defaultCrop } from "@/lib/photo-crop";
 import { checkImage as checkImageFile, shrinkToLimit } from "@/lib/image-shrink";
+import { studentPhotoUrl } from "@/lib/photo-url";
 
 interface IdCardRequest {
   id: number;
@@ -49,8 +50,6 @@ const STATUS_LABELS: Record<string, string> = {
   collected: "Collected",
 };
 
-const photoUrl = (path: string) =>
-  `https://nacosid.tmb.it.com/${path.startsWith("uploads/") ? path : `uploads/${path}`}`;
 
 const readUser = (): StoredUser => {
   try {
@@ -144,7 +143,7 @@ const IdCardApplication = () => {
   }, [previewUrl]);
 
   const savedUrl = useMemo(
-    () => (status?.photo?.image_path ? photoUrl(status.photo.image_path) : null),
+    () => (studentPhotoUrl(status?.photo?.image_path)),
     [status],
   );
   const imageSrc = previewUrl || savedUrl;

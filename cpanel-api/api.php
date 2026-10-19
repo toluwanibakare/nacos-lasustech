@@ -330,6 +330,24 @@ if ($action === 'change_password') {
     json_out(['status' => 'success']);
 }
 
+// Change the profile photo from the dashboard. It is the photo on the ID card, so an unfinished card follows it.
+if ($action === 'update_image') {
+    need_post($method);
+    $in = $_POST ?: input();
+    $student = find_student_by_matric($pdo, (string) ($in['matric_number'] ?? ''));
+    if (!$student) fail('Student not found.', 404);
+    if (!isset($_FILES['image']) || ($_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) fail('Choose a photo to upload.');
+
+    $image = store_photo($_FILES['image'], (string) $student['matric_no']);
+    // The new photo has not been arranged on the card yet, so the saved arrangement is cleared.
+    $pdo->prepare('UPDATE students SET image_path = ?, photo_zoom = NULL, photo_cx = NULL, photo_cy = NULL, is_generated = 0 WHERE id = ?')
+        ->execute([$image, $student['id']]);
+    $pdo->prepare("UPDATE id_card_requests SET passport_url = ? WHERE student_id = ? AND status IN ('awaiting_payment', 'pending', 'processing')")
+        ->execute([$image, $student['id']]);
+    if (!empty($student['image_path']) && $student['image_path'] !== $image) delete_photo($student['image_path']);
+    json_out(['status' => 'success', 'imageUrl' => 'uploads/' . $image]);
+}
+
 if ($action === 'update_profile') {
     need_post($method);
     $in = input();

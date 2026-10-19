@@ -21,8 +21,10 @@ export const resolveImageUrl = (path: string | null | undefined): string => {
 
 export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
   const token = localStorage.getItem('token');
+  // A file upload (FormData) must not be labelled JSON: the browser adds the multipart boundary itself.
+  const isForm = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isForm ? {} : { 'Content-Type': 'application/json' }),
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...options.headers,
   };

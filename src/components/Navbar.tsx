@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import LoginModal from "@/components/LoginModal";
 import { isAwardsHost } from "@/lib/api";
 
+import StudentAvatar from "@/components/StudentAvatar";
 import nacosLogo from "@/assets/nacos_logo.png";
 import lasustechLogo from "@/assets/lasustech_logo.png";
 
@@ -180,10 +181,7 @@ const Navbar = () => {
                           
                           const profileImage = user.profile_image || user.profileImage;
                           if (profileImage && typeof profileImage === 'string') {
-                            const src = profileImage.startsWith('http') 
-                              ? profileImage 
-                              : `https://nacosid.tmb.it.com/${profileImage.startsWith('/') ? profileImage.substring(1) : profileImage}`;
-                            return <img src={src} alt="Profile" className="h-full w-full object-cover" />;
+                            return <StudentAvatar path={profileImage} className="h-full w-full object-cover" />;
                           }
                         } catch (e) {
                           console.error("Navbar Image Error:", e);
@@ -266,11 +264,8 @@ const Navbar = () => {
                         
                         const profileImage = user.profile_image || user.profileImage;
                         if (profileImage && typeof profileImage === 'string') {
-                          const src = profileImage.startsWith('http') 
-                            ? profileImage 
-                            : `https://nacosid.tmb.it.com/${profileImage.startsWith('/') ? profileImage.substring(1) : profileImage}`;
-                          return <img src={src} alt="Profile" className="h-10 w-10 rounded-full border-2 border-primary/20 object-cover" />;
-                        }
+                            return <StudentAvatar path={profileImage} className="h-10 w-10 rounded-full border-2 border-primary/20 object-cover" />;
+                          }
                       } catch (e) {
                         console.error("Mobile Navbar Image Error:", e);
                       }

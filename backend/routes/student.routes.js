@@ -56,7 +56,10 @@ router.put('/profile-image', protect, upload.single('image'), async (req, res) =
     res.json(response.data);
   } catch (error) {
     console.error('Image sync error:', error.response?.data || error.message);
-    res.status(500).json({ message: 'Error syncing image to Central System.' });
+    // Pass on the reason (too large, too small, wrong format) instead of a vague server error.
+    const status = error.response?.status;
+    const message = error.response?.data?.message;
+    res.status(status && status < 500 ? status : 500).json({ message: message || 'Error syncing image to Central System.' });
   }
 });
 

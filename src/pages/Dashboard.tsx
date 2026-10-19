@@ -16,6 +16,8 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import FeedbackForm from "@/components/FeedbackForm";
+import { studentPhotoUrl } from "@/lib/photo-url";
+import StudentAvatar from "@/components/StudentAvatar";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import { downloadReceipt, fetchReceipt, fetchReceiptStatus, ReceiptStatus } from "@/lib/receipt";
 import IdCardApplication from "@/components/IdCardApplication";
@@ -180,15 +182,7 @@ const Dashboard = () => {
     profileImage: null as string | null
   });
 
-  const API_BASE = "https://nacosid.tmb.it.com/";
-
-
-  const getProfileImage = (img: string | null) => {
-    if (!img) return null;
-    if (img.startsWith('http')) return img;
-    const cleanPath = img.startsWith('/') ? img.substring(1) : img;
-    return `${API_BASE}${cleanPath}`;
-  };
+  const getProfileImage = (img: string | null) => studentPhotoUrl(img);
 
   const duesAmount = Number(fees?.dues ?? 0);
   const duesExempt = profile.duesExempt;
@@ -492,7 +486,6 @@ const Dashboard = () => {
       toast({ title: "Uploading...", description: "Compressing and saving your photo." });
       const data = await fetchApi('/student/profile-image', {
         method: 'PUT',
-        headers: { 'Content-Type': 'undefined' }, // Let browser set boundary for FormData
         body: formData
       });
       
@@ -603,17 +596,7 @@ const Dashboard = () => {
                   }
                   
                   const rawProfileImage = user.profile_image || user.profileImage || profile.profileImage;
-                  if (rawProfileImage && typeof rawProfileImage === 'string') {
-                    const src = rawProfileImage.startsWith('http') 
-                      ? rawProfileImage 
-                      : `${API_BASE}${rawProfileImage.startsWith('/') ? rawProfileImage.substring(1) : rawProfileImage}`;
-                    return <img src={src} className="h-full w-full object-cover" alt="Profile" />;
-                  }
-                  return (
-                    <div className="h-full w-full bg-primary/10 flex items-center justify-center">
-                       <User className="h-5 w-5 text-primary" />
-                    </div>
-                  );
+                  return <StudentAvatar path={typeof rawProfileImage === 'string' ? rawProfileImage : null} iconClassName="h-5 w-5 text-primary" />;
                })()}
              </button>
 
@@ -922,20 +905,7 @@ const Dashboard = () => {
                   <div className="relative -mt-16 flex items-end justify-between">
                     <div className="relative">
                       <div className="h-32 w-32 overflow-hidden rounded-full border-4 border-card bg-muted shadow-xl flex items-center justify-center">
-                        {profile.profileImage && typeof profile.profileImage === 'string' ? (
-                          <img 
-                            src={profile.profileImage.startsWith('http') 
-                              ? profile.profileImage 
-                              : `${API_BASE}${profile.profileImage.startsWith('/') ? profile.profileImage.substring(1) : profile.profileImage}`
-                            } 
-                            alt="Profile" 
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-muted/50">
-                            <User className="h-12 w-12 text-muted-foreground/30" />
-                          </div>
-                        )}
+                        <StudentAvatar path={profile.profileImage} iconClassName="h-12 w-12 text-muted-foreground/30" />
                       </div>
                     </div>
                     <div>
