@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { API_BASE_URL, fetchApi } from "@/lib/api";
 import PhotoCropEditor from "@/components/PhotoCropEditor";
 import { PhotoCrop, defaultCrop } from "@/lib/photo-crop";
+import { shrinkToLimit } from "@/lib/image-shrink";
 
 interface IdCardRequest {
   id: number;
@@ -68,7 +69,6 @@ const checkImage = (file: File): Promise<string | null> =>
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       return resolve("Photo must be a JPG, PNG or WEBP image.");
     }
-    if (file.size > MAX_BYTES) return resolve("Photo is too large. Maximum size is 2MB.");
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
@@ -189,8 +189,16 @@ const IdCardApplication = () => {
       toast({ title: "Photo not accepted", description: err, variant: "destructive" });
       return;
     }
-    setFile(f);
-    setPreviewUrl(URL.createObjectURL(f));
+    const ready = await shrinkToLimit(f, MAX_BYTES, MIN_SIDE);
+    if (!ready) {
+      const msg = "That photo is too large to use. Try a smaller photo or take a new one.";
+      setFileError(msg);
+      toast({ title: "Photo not accepted", description: msg, variant: "destructive" });
+      return;
+    }
+    if (ready !== f) toast({ title: "Photo resized", description: "Your photo was larger than 2MB, so it was reduced to fit." });
+    setFile(ready);
+    setPreviewUrl(URL.createObjectURL(ready));
     setCrop(defaultCrop());
   };
 
@@ -346,11 +354,21 @@ const IdCardApplication = () => {
       </div>
 
       <div className="space-y-2">
-        <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onPickFile} />
-        <Button type="button" variant="outline" className="rounded-full" disabled={!acknowledged} onClick={() => fileInput.current?.click()}>
-          <Upload className="mr-2 h-4 w-4" /> {imageSrc ? "Change photo" : "Choose photo"}
+        <input id="id-photo-input" ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={onPickFile} />
+        <Button asChild variant="outline" className="h-11 cursor-pointer rounded-full px-5">
+          <label
+            htmlFor="id-photo-input"
+            onClick={(e) => {
+              if (!acknowledged) {
+                e.preventDefault();
+                toast({ title: "Tick the box first", description: "Confirm you have read the photo guidelines, then choose your photo.", variant: "destructive" });
+              }
+            }}
+          >
+            <Upload className="mr-2 h-4 w-4" /> {imageSrc ? "Change photo" : "Choose photo"}
+          </label>
         </Button>
-        {!acknowledged && <p className="text-xs text-muted-foreground">Tick the box above to choose a file.</p>}
+        {!acknowledged && <p className="text-xs text-muted-foreground">Tick the box above first, then choose your photo.</p>}
         {fileError && <p className="text-sm text-destructive">{fileError}</p>}
       </div>
 
