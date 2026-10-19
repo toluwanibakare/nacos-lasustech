@@ -164,6 +164,12 @@ if ($method === 'GET' && $action === 'get_fees') {
         'departments' => allowed_departments($pdo),
         'welcome_message' => setting($pdo, 'welcome_message', ''),
         'community_link' => setting($pdo, 'whatsapp_community_link', ''),
+        'class_links' => [
+            '100' => setting($pdo, 'whatsapp_class_link_100', ''),
+            '200' => setting($pdo, 'whatsapp_class_link_200', ''),
+            '300' => setting($pdo, 'whatsapp_class_link_300', ''),
+            '400' => setting($pdo, 'whatsapp_class_link_400', ''),
+        ],
     ]);
 }
 
@@ -208,13 +214,24 @@ if ($action === 'update_academic_settings') {
     if (array_key_exists('welcome_message', $in)) {
         $stmt->execute(['welcome_message', mb_substr(trim((string) $in['welcome_message']), 0, 500), 'academic']);
     }
-    if (array_key_exists('community_link', $in)) {
-        $link = trim((string) $in['community_link']);
-        // Empty hides the button; otherwise it must be a WhatsApp group or channel link.
-        if ($link !== '' && !preg_match('#^https://(chat\.whatsapp\.com|whatsapp\.com/channel)/[A-Za-z0-9_\-/]+$#', $link)) {
+    // WhatsApp links shown as Join buttons on the portal. Empty hides the button.
+    $links = [];
+    if (array_key_exists('community_link', $in)) $links['whatsapp_community_link'] = $in['community_link'];
+    if (is_array($in['class_links'] ?? null)) {
+        foreach (['100', '200', '300', '400'] as $level) {
+            if (array_key_exists($level, $in['class_links'])) $links['whatsapp_class_link_' . $level] = $in['class_links'][$level];
+        }
+    }
+    // Check every link first so a bad one does not leave the others half saved.
+    foreach ($links as $key => $value) {
+        $link = trim((string) $value);
+        if ($link !== '' && !preg_match('#^https://(chat\.whatsapp\.com|whatsapp\.com/channel)/[A-Za-z0-9_\-/]+(\?[A-Za-z0-9_\-=&%.]*)?$#', $link)) {
             fail('Enter a WhatsApp group link that starts with https://chat.whatsapp.com/');
         }
-        $stmt->execute(['whatsapp_community_link', $link, 'academic']);
+        $links[$key] = $link;
+    }
+    foreach ($links as $key => $link) {
+        $stmt->execute([$key, $link, 'academic']);
     }
     json_out(['status' => 'success']);
 }

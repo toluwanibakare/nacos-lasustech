@@ -96,6 +96,7 @@ export interface AcademicSettings {
   semester: string;
   welcomeMessage: string;
   communityLink?: string;
+  classLinks?: Record<string, string>;
 }
 
 export interface FeeSettings {

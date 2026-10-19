@@ -20,6 +20,7 @@ const AcademicSettings = () => {
   const [semester, setSemester] = useState("First Semester");
   const [welcome, setWelcome] = useState("");
   const [community, setCommunity] = useState("");
+  const [classLinks, setClassLinks] = useState<Record<string, string>>({});
   const [stalite, setStalite] = useState("");
   const [fresher, setFresher] = useState("");
   const [dues, setDues] = useState("");
@@ -34,6 +35,7 @@ const AcademicSettings = () => {
       setSemester(academic.data.semester || "First Semester");
       setWelcome(academic.data.welcomeMessage || "");
       setCommunity(academic.data.communityLink || "");
+      setClassLinks(academic.data.classLinks || {});
     }
   }, [academic.data]);
 
@@ -53,7 +55,7 @@ const AcademicSettings = () => {
     }
     setAcademicErr(null);
     const ok = await run(
-      () => adminFetch("/admin/settings/academic", { method: "PUT", body: JSON.stringify({ session: session.trim(), semester, welcomeMessage: welcome, communityLink: community.trim() }) }),
+      () => adminFetch("/admin/settings/academic", { method: "PUT", body: JSON.stringify({ session: session.trim(), semester, welcomeMessage: welcome, communityLink: community.trim(), classLinks: Object.fromEntries(["100", "200", "300", "400"].map((l) => [l, (classLinks[l] || "").trim()])) }) }),
       "Academic settings saved.",
     );
     setAcademicSaved(ok);
@@ -109,6 +111,13 @@ const AcademicSettings = () => {
           <Field label="WhatsApp community link" hint="Members see a Join the community button on their portal. Leave empty to hide it.">
             <Input className="rounded-full" placeholder="https://chat.whatsapp.com/..." value={community} onChange={(e) => { setCommunity(e.target.value); setAcademicSaved(false); }} />
           </Field>
+        </div>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          {["100", "200", "300", "400"].map((level) => (
+            <Field key={level} label={`${level} level class group link`} hint={level === "100" ? "Shown to 100 level students and freshers. Leave empty to hide." : "Shown to students of this level. Leave empty to hide."}>
+              <Input className="rounded-full" placeholder="https://chat.whatsapp.com/..." value={classLinks[level] || ""} onChange={(e) => { setClassLinks({ ...classLinks, [level]: e.target.value }); setAcademicSaved(false); }} />
+            </Field>
+          ))}
         </div>
         {academicErr && <p className="mt-3 text-sm text-red-700">{academicErr}</p>}
         <div className="mt-4 flex items-center gap-3">

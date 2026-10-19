@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Check, CreditCard, IdCard as IdIcon, LayoutDashboard, LogOut, User, AlertCircle, Save, Calendar, Home, Lock, BookOpen, Users, X, Download, MessageCircle } from "lucide-react";
+import { Check, CreditCard, IdCard as IdIcon, LayoutDashboard, LogOut, User, AlertCircle, Save, Calendar, Home, Lock, BookOpen, Users, X, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,6 +16,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import FeedbackForm from "@/components/FeedbackForm";
+import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import { downloadReceipt, fetchReceipt, fetchReceiptStatus, ReceiptStatus } from "@/lib/receipt";
 import IdCardApplication from "@/components/IdCardApplication";
 import HocPanel from "@/components/HocPanel";
@@ -44,6 +45,7 @@ interface Fees {
   id_card_fresher?: number | string;
   welcome_message?: string;
   community_link?: string;
+  class_links?: Record<string, string>;
 }
 
 interface AcademicSettings {
@@ -790,27 +792,40 @@ const Dashboard = () => {
                 </p>
               </div>
 
-              {fees?.community_link && (
-                <div className="flex flex-col gap-4 rounded-3xl border border-green-200 bg-green-50/60 p-5 sm:flex-row sm:items-center sm:justify-between md:p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-green-600 text-white">
-                      <MessageCircle className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-foreground">Join the NACOS community</h3>
-                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">Get announcements, course updates and meet other members on WhatsApp.</p>
-                    </div>
+              {(() => {
+                // The community for everyone, plus the class group for the member's own level (freshers are 100 level).
+                const classLink = fees?.class_links?.[isFresher ? "100" : profile.level] || "";
+                const groups = [
+                  { key: "community", title: "Join the NACOS community", text: "Announcements, events and updates for every NACOS member.", button: "Join the community", href: fees?.community_link || "" },
+                  { key: "class", title: `Join your class group${isFresher || profile.level ? ` (${isFresher ? "100" : profile.level} Level)` : ""}`, text: "Course updates and notes from your class, shared by your HOC.", button: "Join your class group", href: classLink },
+                ].filter((g) => g.href);
+                if (groups.length === 0) return null;
+                return (
+                  <div className={`grid gap-4 ${groups.length > 1 ? "lg:grid-cols-2" : ""}`}>
+                    {groups.map((g) => (
+                      <div key={g.key} className="flex flex-col gap-4 rounded-3xl border border-green-200 bg-green-50/60 p-5 md:p-6">
+                        <div className="flex items-start gap-4">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white">
+                            <WhatsAppIcon className="h-7 w-7" />
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-bold text-foreground">{g.title}</h3>
+                            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{g.text}</p>
+                          </div>
+                        </div>
+                        <a
+                          href={g.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-6 text-sm font-bold text-white transition-colors hover:bg-[#1ebe5b] sm:h-11"
+                        >
+                          <WhatsAppIcon className="h-5 w-5" /> {g.button}
+                        </a>
+                      </div>
+                    ))}
                   </div>
-                  <a
-                    href={fees.community_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-green-600 px-6 text-sm font-bold text-white transition-colors hover:bg-green-700 sm:h-11 sm:w-auto"
-                  >
-                    <MessageCircle className="h-5 w-5" /> Join on WhatsApp
-                  </a>
-                </div>
-              )}
+                );
+              })()}
 
               <div className="grid gap-6 sm:grid-cols-2">
                 <div className="rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:shadow-md">
