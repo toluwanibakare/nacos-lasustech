@@ -16,6 +16,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import FeedbackForm from "@/components/FeedbackForm";
+import { maskEmail } from "@/lib/mask-email";
 import { studentPhotoUrl } from "@/lib/photo-url";
 import StudentAvatar from "@/components/StudentAvatar";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
@@ -192,18 +193,7 @@ const Dashboard = () => {
   const amountOwing = duesPaid || duesExempt ? 0 : duesAmount;
 
 
-  // Helper to hash email for privacy
-  const hashEmail = (email: string) => {
-    if (!email) return "Not set up";
-    const [name, domain] = email.split("@");
-    if (name.length <= 3) return `${name.substring(0, 1)}***@${domain}`;
-    const visibleName = name.substring(0, 3);
-    const domainParts = domain.split(".");
-    const tld = domainParts.pop();
-    const domainName = domainParts.join(".");
-    const maskedDomain = domainName.length > 2 ? `${domainName.substring(0, 2)}***` : "***";
-    return `${visibleName}*******@${maskedDomain}.${tld}`;
-  };
+  const hashEmail = maskEmail;
 
 
   useEffect(() => {
