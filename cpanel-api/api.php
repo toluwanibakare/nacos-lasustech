@@ -448,7 +448,9 @@ if ($action === 'id_application') {
         $image = store_photo($_FILES['image'], $prefix);
     }
 
-    $pdo->prepare("UPDATE $table SET image_path = ?, photo_zoom = ?, photo_cx = ?, photo_cy = ?, is_generated = 0 WHERE id = ?")
+    // Only students have an is_generated flag (a fresher's card is made after promotion).
+    $resetGenerated = $table === 'students' ? ', is_generated = 0' : '';
+    $pdo->prepare("UPDATE $table SET image_path = ?, photo_zoom = ?, photo_cx = ?, photo_cy = ?$resetGenerated WHERE id = ?")
         ->execute([$image, $crop['zoom'], $crop['cx'], $crop['cy'], $pid]);
     if ($hasUpload && $oldImage && $oldImage !== $image) {
         delete_photo($oldImage);
