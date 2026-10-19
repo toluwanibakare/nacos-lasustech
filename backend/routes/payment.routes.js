@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import crypto from 'node:crypto';
+import { ipBackstop } from '../middleware/rate-limits.js';
 import KorapayService from '../services/korapay.service.js';
 import protect from '../middleware/auth.middleware.js';
 import emailService from '../services/email.service.js';
@@ -314,9 +316,27 @@ router.get('/receipt-status', protect, async (req, res) => {
   }
 });
 
+/**
+ * Receipt codes (the QR on the PDF). A code names the payments the receipt covers and carries a
+ * signature, so a code cannot be guessed or edited: R<id>-<id>-<signature>.
+ */
+const receiptSecret = () => `receipt:${process.env.JWT_SECRET || 'nacos_secret_2025'}`;
+const signIds = (ids) => crypto.createHmac('sha256', receiptSecret()).update(ids.join(',')).digest('hex').slice(0, 10).toUpperCase();
+const makeReceiptCode = (ids) => `R${ids.join('-')}-${signIds(ids)}`;
+const parseReceiptCode = (code) => {
+  const m = /^R(\d+(?:-\d+){0,5})-([A-F0-9]{10})$/.exec(String(code || '').toUpperCase());
+  if (!m) return null;
+  const ids = m[1].split('-').map(Number);
+  const expected = Buffer.from(signIds(ids));
+  const given = Buffer.from(m[2]);
+  return expected.length === given.length && crypto.timingSafeEqual(expected, given) ? ids : null;
+};
+const maskMatric = (m) => (m && m.length > 6 ? `${m.slice(0, 4)}${'*'.repeat(m.length - 6)}${m.slice(-2)}` : m || null);
+const itemOf = (p) => ({ label: DISPLAY_TYPE[p.payment_type] || 'NACOS Payment', amount: Number(p.amount) });
+
 router.get('/receipt/:reference', protect, async (req, res) => {
   try {
-    const [payments, c] = await Promise.all([centralGet('payments', identityParams(req.user)), clearanceFor(req.user)]);
+    const [payments, c, fees] = await Promise.all([centralGet('payments', identityParams(req.user)), clearanceFor(req.user), centralGet('get_fees')]);
     const payment = payments.find((p) => p.reference === req.params.reference || p.charge_reference === req.params.reference);
     if (!payment) {
       res.status(404).json({ message: 'Payment not found.' });
@@ -326,30 +346,75 @@ router.get('/receipt/:reference', protect, async (req, res) => {
       res.status(409).json({ message: 'This payment was not completed, so there is no receipt.' });
       return;
     }
+
+    let rows;
     if (TIED_TYPES.includes(payment.payment_type)) {
       const reason = lockedReason(c);
       if (reason) {
         res.status(403).json({ message: reason, locked: true });
         return;
       }
+      // Dues and the ID card are one receipt: a single document covers both.
+      const ok = (p) => p.status === 'success';
+      const dues = payments.find((p) => ok(p) && p.payment_type === 'dues' && p.session === (payment.payment_type === 'dues' ? payment.session : fees.session));
+      const card = payments.find((p) => ok(p) && p.payment_type === 'id_card');
+      rows = [dues, card].filter(Boolean);
+      if (!rows.length) rows = [payment];
+    } else {
+      rows = payments.filter((p) => p.status === 'success' && p.charge_reference === payment.charge_reference);
     }
-    // A bundle shows as one receipt with each item listed.
-    const items = payments
-      .filter((p) => p.status === 'success' && p.charge_reference === payment.charge_reference)
-      .map((p) => ({ label: DISPLAY_TYPE[p.payment_type] || 'NACOS Payment', amount: Number(p.amount) }));
+
+    const ids = rows.map((p) => Number(p.id)).sort((a, b) => a - b);
+    const code = makeReceiptCode(ids);
+    const portal = (process.env.FRONTEND_URL || 'https://www.nacoslasustech.org.ng').replace(/\/$/, '');
+    const items = rows.map(itemOf);
     res.json({
-      receipt_no: `NACOS-R-${payment.id}`,
-      reference: payment.charge_reference || payment.reference,
-      date: payment.created_at,
+      receipt_no: `NACOS-R-${ids.join('-')}`,
+      code,
+      verify_url: `${portal}/verify/${code}`,
+      references: [...new Set(rows.map((p) => p.charge_reference || p.reference))],
+      date: rows.map((p) => p.created_at).filter(Boolean).sort().pop() || null,
       session: payment.session,
       name: req.user.name,
       matric: req.user.account_type === 'fresher' ? null : req.user.matric,
       account_type: req.user.account_type || 'student',
+      exempt_from_dues: c.duesExempt && !rows.some((p) => p.payment_type === 'dues'),
       items,
       total: items.reduce((sum, i) => sum + i.amount, 0),
     });
   } catch (error) {
     sendCentralError(res, error, 'Could not load the receipt.');
+  }
+});
+
+/** Public: what a receipt QR code opens. Confirms the receipt is genuine and shows what it covers. */
+router.get('/verify-receipt/:code', ipBackstop(60), async (req, res) => {
+  const ids = parseReceiptCode(req.params.code);
+  if (!ids) {
+    res.json({ valid: false, message: 'This receipt code is not valid. It may have been altered or mistyped.' });
+    return;
+  }
+  try {
+    const rows = await centralGet('receipt_lookup', { ids: ids.join(',') });
+    const samePerson = rows.length > 0 && rows.every((r) => String(r.student_id) === String(rows[0].student_id) && String(r.fresher_id) === String(rows[0].fresher_id));
+    if (rows.length !== ids.length || !samePerson || rows.some((r) => r.status !== 'success')) {
+      res.json({ valid: false, message: 'No matching completed payment was found for this receipt.' });
+      return;
+    }
+    const items = rows.map(itemOf);
+    res.json({
+      valid: true,
+      receipt_no: `NACOS-R-${ids.join('-')}`,
+      name: rows[0].full_name,
+      matric: maskMatric(rows[0].matric_no),
+      account_type: rows[0].account_type,
+      session: rows[0].session,
+      date: rows.map((r) => r.created_at).filter(Boolean).sort().pop() || null,
+      items,
+      total: items.reduce((sum, i) => sum + i.amount, 0),
+    });
+  } catch (error) {
+    res.status(502).json({ valid: false, message: 'We could not check this receipt right now. Please try again.' });
   }
 });
 

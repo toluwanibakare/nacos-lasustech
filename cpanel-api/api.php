@@ -557,6 +557,25 @@ if ($method === 'GET' && $action === 'payments') {
     }, $stmt->fetchAll()));
 }
 
+// Receipt verification: the payments behind a receipt QR code, with who paid.
+if ($method === 'GET' && $action === 'receipt_lookup') {
+    $ids = array_values(array_unique(array_filter(array_map('intval', explode(',', (string) ($_GET['ids'] ?? ''))))));
+    if (!$ids || count($ids) > 6) fail('Invalid receipt.');
+    $marks = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $pdo->prepare(
+        "SELECT p.id, p.student_id, p.fresher_id, p.amount, p.reference, p.status, p.payment_type, p.session, p.created_at,
+                COALESCE(s.full_name, f.full_name) AS full_name,
+                COALESCE(s.matric_no, f.matric_no) AS matric_no,
+                IF(p.fresher_id IS NOT NULL AND p.student_id IS NULL, 'fresher', 'student') AS account_type
+         FROM payments p
+         LEFT JOIN students s ON s.id = p.student_id
+         LEFT JOIN freshers f ON f.id = p.fresher_id
+         WHERE p.id IN ($marks)"
+    );
+    $stmt->execute($ids);
+    json_out($stmt->fetchAll());
+}
+
 if ($action === 'log_payment_pending') {
     need_post($method);
     $in = input();

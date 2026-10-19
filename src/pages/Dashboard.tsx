@@ -1063,6 +1063,33 @@ const Dashboard = () => {
                     </div>
                   </div>
 
+                  {(() => {
+                    // Dues and the ID card are one receipt: one PDF covers both.
+                    const paidRows = payments.filter((p) => p.status === 'success' && (p.payment_type === 'dues' || p.payment_type === 'id_card'));
+                    if (paidRows.length === 0) return null;
+                    const target = paidRows.find((p) => p.payment_type === 'dues') || paidRows[0];
+                    const ref = target.charge_reference || target.reference || '';
+                    const locked = receiptStatus?.locked_reason || null;
+                    return (
+                      <div className="mt-8 rounded-2xl border border-border bg-muted/30 p-4">
+                        <p className="text-sm font-bold text-foreground">Dues and ID card receipt</p>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">One receipt covers your dues and your ID card, with a QR code anyone can scan to check it is genuine.</p>
+                        <button
+                          type="button"
+                          disabled={!!locked || receiptBusy === ref}
+                          onClick={() => getReceipt(target)}
+                          className={`mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-bold transition-colors sm:h-11 ${
+                            locked ? 'cursor-not-allowed bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-70'
+                          }`}
+                        >
+                          {locked ? <Lock className="h-5 w-5" /> : <Download className="h-5 w-5" />}
+                          {receiptBusy === ref ? "Preparing receipt..." : locked ? "Receipt locked" : "Download receipt (PDF)"}
+                        </button>
+                        {locked && <p className="mt-2 text-center text-xs leading-relaxed text-amber-800">{locked}</p>}
+                      </div>
+                    );
+                  })()}
+
                   <div className="mt-8">
                     <h3 className="font-display text-lg font-bold text-foreground">Payment History</h3>
                     <div className="mt-4 space-y-4">
@@ -1090,9 +1117,8 @@ const Dashboard = () => {
                                   {ok ? 'Successful' : pay.status}
                                 </p>
                               </div>
-                              {ok && ['dues', 'id_card', 'id_replacement', 'hoc_item'].includes(pay.payment_type) && (() => {
-                                const tied = pay.payment_type === 'dues' || pay.payment_type === 'id_card';
-                                const locked = tied ? receiptStatus?.locked_reason : null;
+                              {ok && ['id_replacement', 'hoc_item'].includes(pay.payment_type) && (() => {
+                                const locked: string | null = null;
                                 const ref = pay.charge_reference || pay.reference || '';
                                 return (
                                   <div className="basis-full">
