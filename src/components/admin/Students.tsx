@@ -15,12 +15,22 @@ const isExecutive = (s: Student) => {
   return !PLAIN_ROLES.includes(p.toLowerCase()) && p !== "HOC" && p !== "Assistant HOC";
 };
 
+/** Executives, the HOC and the Assistant HOC do not pay dues. */
+const isDuesExempt = (s: Student) => roleOf(s) === "HOC" || roleOf(s) === "Assistant HOC" || isExecutive(s);
+
 const rolePill = (s: Student) => {
   const p = roleOf(s);
-  if (p === "HOC") return <Pill tone="green">HOC</Pill>;
-  if (p === "Assistant HOC") return <Pill tone="blue">Asst. HOC</Pill>;
-  if (isExecutive(s)) return <Pill tone="amber">{p}</Pill>;
-  return <span className="text-xs text-muted-foreground">Student</span>;
+  const role = p === "HOC" ? <Pill tone="green">HOC</Pill>
+    : p === "Assistant HOC" ? <Pill tone="blue">Asst. HOC</Pill>
+    : isExecutive(s) ? <Pill tone="amber">{p}</Pill>
+    : null;
+  if (!role) return <span className="text-xs text-muted-foreground">Student</span>;
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      {role}
+      {isDuesExempt(s) && <Pill tone="slate">No dues</Pill>}
+    </span>
+  );
 };
 
 const Students = () => {

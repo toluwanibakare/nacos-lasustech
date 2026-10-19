@@ -20,6 +20,7 @@ export interface Student {
   email: string | null;
   email_verified?: number | boolean | null;
   whatsapp_number?: string | null;
+  dues_exempt?: boolean | number | string;
   gender?: string | null;
   birthday?: string | null;
   post: string | null;

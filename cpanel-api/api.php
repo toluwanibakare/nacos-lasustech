@@ -69,10 +69,17 @@ function fresher_view(array $f): array
     return $f;
 }
 
+/** Executives, the HOC and the Assistant HOC (any role other than a plain student) do not pay dues. */
+function is_dues_exempt(?string $post): bool
+{
+    return !in_array(strtolower(trim((string) $post)), ['', 'student', 'fresher'], true);
+}
+
 function student_view(array $s): array
 {
     $s = public_row($s);
     $s['account_type'] = 'student';
+    $s['dues_exempt'] = is_dues_exempt($s['post'] ?? null);
     return $s;
 }
 
@@ -725,6 +732,7 @@ if ($method === 'GET' && $action === 'hoc_profile') {
         'department' => $student['department'] ?? null,
         'post' => $student['post'],
         'is_hoc' => $isHoc,
+        'dues_exempt' => is_dues_exempt($student['post'] ?? null),
     ]);
 }
 

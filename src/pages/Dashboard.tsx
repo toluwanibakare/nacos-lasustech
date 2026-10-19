@@ -168,6 +168,7 @@ const Dashboard = () => {
     gender: "",
     post: "",
     duesStatus: "Pending",
+    duesExempt: false,
     idCardStatus: "Not Registered",
     attendance: 0,
     resources: 0,
@@ -185,8 +186,9 @@ const Dashboard = () => {
   };
 
   const duesAmount = Number(fees?.dues ?? 0);
+  const duesExempt = profile.duesExempt;
   const duesPaid = hasPaidDues(payments, fees?.session);
-  const amountOwing = duesPaid ? 0 : duesAmount;
+  const amountOwing = duesPaid || duesExempt ? 0 : duesAmount;
 
 
   // Helper to hash email for privacy
@@ -253,6 +255,7 @@ const Dashboard = () => {
       post: roleTitle,
       birthday: String(student.birthday || ""),
       duesStatus: hasPaidDues(payList, feeInfo?.session) ? 'Paid' : 'Pending',
+      duesExempt: student.dues_exempt === true || student.dues_exempt === 1 || student.dues_exempt === '1',
       idCardStatus: deriveIdCardStatus(dash?.idCard, matric, isFresher),
       attendance: Number(student.attendance_percentage || 0),
       resources: Number(student.resources_count || 0),
@@ -767,7 +770,7 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <h3 className="text-sm font-bold">Membership Dues</h3>
-                      <p className="text-xs text-muted-foreground">Status: <span className={`${duesPaid ? "text-green-600" : "text-amber-600"} font-bold`}>{duesPaid ? "Paid" : "Pending"}</span></p>
+                      <p className="text-xs text-muted-foreground">Status: <span className={`${duesPaid || duesExempt ? "text-green-600" : "text-amber-600"} font-bold`}>{duesExempt ? "Exempt" : duesPaid ? "Paid" : "Pending"}</span></p>
                     </div>
                   </div>
                   <Button onClick={() => setActiveTab("dues")} className="mt-6 w-full rounded-xl" variant="outline">View Dues History</Button>
@@ -1028,8 +1031,8 @@ const Dashboard = () => {
                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Amount Owing</p>
                       <p className="mt-1 font-display text-3xl font-bold text-foreground">{fees ? `₦${amountOwing.toLocaleString()}` : "..."}</p>
                     </div>
-                    <div className={`rounded-xl px-4 py-2 text-xs font-bold ${duesPaid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {duesPaid ? 'Paid' : 'Pending'}
+                    <div className={`rounded-xl px-4 py-2 text-xs font-bold ${duesPaid || duesExempt ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {duesExempt ? 'Exempt' : duesPaid ? 'Paid' : 'Pending'}
                     </div>
                   </div>
 
@@ -1077,14 +1080,16 @@ const Dashboard = () => {
                   <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
                     <h3 className="font-display text-lg font-bold text-foreground">Online Payment</h3>
                     <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-                      Instant verification. Skip the wait and pay your {fees ? `₦${duesAmount.toLocaleString()} ` : ""}session dues via Korapay.
+                      {duesExempt
+                        ? `As ${profile.post}, you do not pay dues. Nothing is owed on your account.`
+                        : <>Instant verification. Skip the wait and pay your {fees ? `₦${duesAmount.toLocaleString()} ` : ""}session dues via Korapay.</>}
                     </p>
                     <Button 
                       onClick={handlePayment} 
                       className="mt-6 w-full rounded-xl shadow-lg shadow-primary/20"
-                      disabled={duesPaid || !fees}
+                      disabled={duesPaid || duesExempt || !fees}
                     >
-                      {duesPaid ? 'Dues Already Paid' : 'Pay Now with Korapay'}
+                      {duesExempt ? 'Exempt from Dues' : duesPaid ? 'Dues Already Paid' : 'Pay Now with Korapay'}
                     </Button>
                     <p className="mt-4 text-center text-[10px] text-muted-foreground">
                       Powered by <strong>Korapay</strong>. All transactions are secure.

@@ -69,6 +69,13 @@ router.post('/initialize', protect, async (req, res) => {
     let amount;
     let hocItemId = null;
     if (type === 'dues') {
+      if (req.user.account_type !== 'fresher') {
+        const me = await centralGet('hoc_profile', { matric: req.user.matric });
+        if (me.dues_exempt) {
+          res.status(409).json({ message: 'Executives, the HOC and the Assistant HOC do not pay dues.' });
+          return;
+        }
+      }
       amount = Number(fees.dues);
       const paid = payments.some((p) => p.payment_type === 'dues' && p.status === 'success' && p.session === fees.session);
       if (paid) {
