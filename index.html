@@ -33,20 +33,18 @@
       </div>
 
       <div class="ls-center">
-        <!-- rings pulse out from behind the logo -->
-        <div class="ls-rings" aria-hidden="true"><span></span><span></span><span></span></div>
-
       <div style="position:relative;width:80px;height:80px;transform-style:preserve-3d;animation:flip-horizontal 2.5s infinite linear">
         <!-- Front -->
-        <div style="position:absolute;inset:0;backface-visibility:hidden;display:flex;align-items:center;justify-content:center;border-radius:50%;border:3px solid rgba(31,95,175,0.3);background:linear-gradient(to bottom right, rgba(31,95,175,0.1), transparent);box-shadow:0 10px 25px rgba(0,0,0,0.1)">
+        <div style="position:absolute;inset:0;backface-visibility:hidden;display:flex;align-items:center;justify-content:center;border-radius:50%;border:3px solid rgba(31,95,175,0.3);background:linear-gradient(to bottom right, rgba(31,95,175,0.1), transparent)">
           <img src="/src/assets/nacos_logo.png" alt="" style="width:50px;height:50px;object-fit:contain" />
         </div>
         <!-- Back -->
-        <div style="position:absolute;inset:0;backface-visibility:hidden;transform:rotateY(180deg);display:flex;align-items:center;justify-content:center;border-radius:50%;border:3px solid rgba(31,95,175,0.3);background:linear-gradient(to bottom right, rgba(31,95,175,0.1), transparent);box-shadow:0 10px 25px rgba(0,0,0,0.1)">
+        <div style="position:absolute;inset:0;backface-visibility:hidden;transform:rotateY(180deg);display:flex;align-items:center;justify-content:center;border-radius:50%;border:3px solid rgba(31,95,175,0.3);background:linear-gradient(to bottom right, rgba(31,95,175,0.1), transparent)">
           <img src="/src/assets/lasustech_logo.png" alt="" style="width:50px;height:50px;object-fit:contain" />
         </div>
       </div>
         <p class="ls-name" style="margin-top:24px;color:rgba(8,17,29,0.7);font-size:12px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;font-family:system-ui,sans-serif">NACOS LASUSTECH</p>
+        <p class="ls-welcome">Welcome to the<br /><strong>2026/2027</strong> session</p>
         <p class="ls-tag">Nigeria Association of Computing Students &middot; LASUSTECH Chapter</p>
       </div>
 
@@ -89,27 +87,20 @@
         }
 
         .ls-center { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; }
-        .ls-center > .ls-rings + div { position: relative; z-index: 1; }
-
-        .ls-rings { position: absolute; top: 0; left: 50%; width: 80px; height: 80px; margin-left: -40px; }
-        .ls-rings span {
-          position: absolute; inset: 0; border-radius: 50%;
-          border: 1.5px solid rgba(31,95,175,0.35);
-          animation: ls-ring 3s cubic-bezier(0.22, 1, 0.36, 1) infinite;
-          opacity: 0;
-        }
-        .ls-rings span:nth-child(2) { animation-delay: 1s; border-color: rgba(22,155,45,0.35); }
-        .ls-rings span:nth-child(3) { animation-delay: 2s; }
-        @keyframes ls-ring {
-          0% { transform: scale(1); opacity: 0.8; }
-          100% { transform: scale(3.4); opacity: 0; }
-        }
-
         .ls-name { opacity: 0; animation: ls-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards; }
-        .ls-tag {
-          margin-top: 10px; max-width: 80vw; text-align: center;
-          color: rgba(8,17,29,0.45); font: 500 11px/1.5 system-ui, sans-serif; letter-spacing: 0.04em;
+        .ls-welcome {
+          margin: 22px 0 0; text-align: center; color: rgba(8,17,29,0.62);
+          font: 500 15px/1.5 system-ui, sans-serif; letter-spacing: 0.01em;
           opacity: 0; animation: ls-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.45s forwards;
+        }
+        .ls-welcome strong {
+          display: inline-block; margin-top: 2px; color: #169b2d;
+          font: 800 30px/1.1 system-ui, sans-serif; letter-spacing: -0.01em;
+        }
+        .ls-tag {
+          margin-top: 18px; max-width: 80vw; text-align: center;
+          color: rgba(8,17,29,0.45); font: 500 11px/1.5 system-ui, sans-serif; letter-spacing: 0.04em;
+          opacity: 0; animation: ls-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.7s forwards;
         }
         @keyframes ls-up {
           from { opacity: 0; transform: translateY(10px); }
@@ -132,8 +123,7 @@
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .ls-blob, .ls-rings span { animation: none; }
-          .ls-rings { display: none; }
+          .ls-blob { animation: none; }
           #loading-screen { transition: opacity 0.4s ease; }
           #loading-screen.ls-exit { transform: none; opacity: 0; border-radius: 0; }
           body.splash-done #root { animation: none; }
