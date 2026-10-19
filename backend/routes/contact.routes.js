@@ -1,56 +1,57 @@
 import { Router } from 'express';
-import axios from 'axios';
 import emailService from '../services/email.service.js';
+import { centralPost } from '../services/central.service.js';
 
 const router = Router();
-const ID_SYSTEM_API = process.env.CENTRAL_API_URL || 'https://nacosid.tmb.it.com/api.php';
-const API_KEY = process.env.ID_SYSTEM_API_KEY || 'NACOS_LASUSTECH_SECURE_API_KEY';
+
+const KINDS = ['message', 'suggestion', 'complaint'];
 
 /**
- * Contact/Support Routes
+ * Contact form, suggestion box and complaint box
  * ---------------------------------------------------------
- * Proxying contact messages to the central system and sending emails.
+ * Stored by the central API (contact_messages). An anonymous submission carries
+ * no name and no email, gets no confirmation email, and nothing about the sender
+ * is logged here. The route is public: any sign-in token on the request is ignored.
  */
 router.post('/submit', async (req, res) => {
-  const { full_name, email, subject, message } = req.body;
+  const kind = KINDS.includes(req.body?.kind) ? req.body.kind : 'message';
+  const anonymous = req.body?.is_anonymous === true || req.body?.is_anonymous === 'true';
+  const message = String(req.body?.message || '').trim();
+  const full_name = anonymous ? '' : String(req.body?.full_name || '').trim();
+  const email = anonymous ? '' : String(req.body?.email || '').trim();
+  const subject = String(req.body?.subject || '').trim().slice(0, 200);
 
-  if (!full_name || !email || !message) {
+  if (message.length < 5) {
+    return res.status(400).json({ message: 'Please write a little more.' });
+  }
+  if (message.length > 3000) {
+    return res.status(400).json({ message: 'Please keep it under 3000 characters.' });
+  }
+  if (!anonymous && (!full_name || !email)) {
     return res.status(400).json({ message: 'Please fill in all required fields!' });
   }
 
   try {
-    // 1. Log to Central System
-    try {
-      const params = new URLSearchParams();
-      params.append('action', 'submit_contact');
-      params.append('api_key', API_KEY);
-      params.append('full_name', full_name);
-      params.append('email', email);
-      params.append('subject', subject || 'No Subject');
-      params.append('message', message);
-
-      await axios.post(`${ID_SYSTEM_API}?action=submit_contact`, params.toString(), {
-        headers: { 
-          'X-API-KEY': API_KEY,
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      });
-    } catch (apiErr) {
-      console.warn('⚠️ Could not log contact message to central system:', apiErr.message);
-    }
-
-    // 2. Send emails
-    emailService.sendContactConfirmation(email, full_name).catch(err => console.error('Email Error:', err));
-    emailService.sendContactNotificationToAdmin({ full_name, email, subject, message }).catch(err => console.error('Admin Email Error:', err));
-
-    res.json({
-      status: 'success',
-      message: 'Your message has been received. We will get back to you soon.'
-    });
-  } catch (error) {
-    console.error('❌ Contact Submit Error:', error.message);
-    res.status(500).json({ message: 'Error processing your message. Please try again later.' });
+    await centralPost('submit_contact', { kind, is_anonymous: anonymous, full_name, email, subject, message });
+  } catch (err) {
+    // Say so: the sender must know it was not saved (nobody can follow up an anonymous note).
+    console.error('Contact store error:', err.response?.data?.message || err.message);
+    return res.status(502).json({ message: 'We could not save your message right now. Please try again in a moment.' });
   }
+
+  if (!anonymous) {
+    emailService.sendContactConfirmation(email, full_name).catch((err) => console.error('Email Error:', err));
+  }
+  emailService
+    .sendContactNotificationToAdmin({ kind, anonymous, full_name, email, subject, message })
+    .catch((err) => console.error('Admin Email Error:', err));
+
+  const thanks = {
+    message: 'Your message has been received. We will get back to you soon.',
+    suggestion: 'Thank you. Your suggestion has been sent to the executives.',
+    complaint: 'Thank you. Your complaint has been sent to the executives.',
+  };
+  res.json({ status: 'success', message: thanks[kind] });
 });
 
 export default router;

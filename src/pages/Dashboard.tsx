@@ -15,6 +15,7 @@ import Layout from "@/components/Layout";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
+import FeedbackForm from "@/components/FeedbackForm";
 import IdCardApplication from "@/components/IdCardApplication";
 import HocPanel from "@/components/HocPanel";
 import MaterialsPanel from "@/components/MaterialsPanel";
@@ -784,6 +785,12 @@ const Dashboard = () => {
                   </div>
                   <Button onClick={() => setActiveTab("idcard")} className="mt-6 w-full rounded-xl" variant="outline">Manage ID Card</Button>
                 </div>
+              </div>
+
+              <div className="rounded-3xl border border-border bg-card p-6 md:p-8">
+                <h3 className="font-display text-lg font-bold text-foreground">Suggestion and Complaint Box</h3>
+                <p className="mt-1 text-xs text-muted-foreground">Tell the executives what to improve, or report a problem. You can stay anonymous.</p>
+                <FeedbackForm defaultKind="suggestion" className="mt-5 max-w-xl" />
               </div>
 
               <div className="grid gap-8 lg:grid-cols-[1fr_350px]">

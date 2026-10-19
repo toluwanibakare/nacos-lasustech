@@ -164,6 +164,8 @@ export interface Blog {
 
 export interface ContactMessage {
   id: number | string;
+  kind?: "message" | "suggestion" | "complaint";
+  is_anonymous?: number | boolean | string;
   full_name?: string;
   email?: string;
   subject?: string;

@@ -1,34 +1,11 @@
-import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Mail, MapPin, Phone } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import Layout from "@/components/Layout";
-import { useToast } from "@/hooks/use-toast";
-import { fetchApi } from "@/lib/api";
+import FeedbackForm, { FeedbackKind } from "@/components/FeedbackForm";
 
 const Contact = () => {
-  const { toast } = useToast();
-  const [form, setForm] = useState({ name: "", email: "", message: "" });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await fetchApi('/contact/submit', {
-        method: 'POST',
-        body: JSON.stringify({
-          full_name: form.name,
-          email: form.email,
-          subject: 'Contact Form Message',
-          message: form.message
-        })
-      });
-      toast({ title: "Message sent", description: "Thank you for reaching out. We have sent a confirmation to your email. Please check your inbox and spam folder!" });
-      setForm({ name: "", email: "", message: "" });
-    } catch (err) {
-      toast({ title: "Error", description: "Failed to send message.", variant: "destructive" });
-    }
-  };
+  const { hash } = useLocation();
+  const startKind: FeedbackKind = hash === "#complaint" ? "complaint" : hash === "#suggestion" ? "suggestion" : "message";
 
   return (
     <Layout>
@@ -83,44 +60,10 @@ const Contact = () => {
               </div>
             </div>
 
-            <div>
-              <h3 className="font-display text-lg font-bold text-foreground">Send a Message</h3>
-              <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-foreground">Full Name</label>
-                  <Input
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    required
-                    className="mt-1"
-                    placeholder="Your full name"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-foreground">Email Address</label>
-                  <Input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    required
-                    className="mt-1"
-                    placeholder="you@example.com"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-foreground">Message</label>
-                  <Textarea
-                    value={form.message}
-                    onChange={(e) => setForm({ ...form, message: e.target.value })}
-                    required
-                    className="mt-1 min-h-[120px]"
-                    placeholder="How can we help?"
-                  />
-                </div>
-                <Button type="submit" className="w-full font-semibold">
-                  Send Message
-                </Button>
-              </form>
+            <div id="feedback" className="scroll-mt-24">
+              <h3 className="font-display text-lg font-bold text-foreground">Message, Suggestion or Complaint</h3>
+              <p className="mt-1 text-xs text-muted-foreground">Pick one below. Suggestions and complaints can be sent anonymously.</p>
+              <FeedbackForm key={startKind} defaultKind={startKind} className="mt-5" />
             </div>
           </div>
         </div>

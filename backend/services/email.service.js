@@ -144,27 +144,29 @@ export const sendContactConfirmation = async (userEmail, userName) => {
  * Send Contact Form Notification to Admin
  */
 export const sendContactNotificationToAdmin = async (contactData) => {
-  const { full_name, email, subject, message } = contactData;
+  const { kind = 'message', anonymous = false, full_name, email, subject, message } = contactData;
+  const label = { message: 'Message', suggestion: 'Suggestion', complaint: 'Complaint' }[kind] || 'Message';
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const from = anonymous ? 'Anonymous' : `${full_name} (${email})`;
   const mailOptions = {
     from: mailFrom(`${APP_NAME} Portal`),
     to: process.env.ADMIN_EMAIL,
-    subject: `New Message: ${subject}`,
-    text: `New Contact Submission\n\nName: ${full_name}\nEmail: ${email}\nSubject: ${subject}\n\nMessage:\n${message}`,
+    subject: `New ${label}${anonymous ? ' (anonymous)' : ''}${subject ? `: ${String(subject).replace(/[\r\n]+/g, ' ')}` : ''}`,
+    text: `New ${label}\n\nFrom: ${from}${subject ? `\nSubject: ${subject}` : ''}\n\n${message}`,
     html: `
       ${emailHeader}
-      <h3 style="color: #333; margin-top: 0;">New Contact Form Submission</h3>
-      <p>A new message has been submitted via the NACOS website.</p>
-      
+      <h3 style="color: #333; margin-top: 0;">New ${esc(label)}${anonymous ? ' (anonymous)' : ''}</h3>
+      <p>Sent through the NACOS website. You can also read it in the admin under Messages.</p>
+
       <div style="margin: 20px 0; padding: 15px; background-color: #f9f9f9; border-radius: 4px; border: 1px solid #eee;">
-        <p><strong>From:</strong> ${full_name} (${email})</p>
-        <p><strong>Subject:</strong> ${subject}</p>
+        <p><strong>From:</strong> ${esc(from)}</p>
+        ${subject ? `<p><strong>Subject:</strong> ${esc(subject)}</p>` : ''}
         <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
-        <p><strong>Message:</strong></p>
-        <p style="white-space: pre-wrap;">${message}</p>
+        <p style="white-space: pre-wrap;">${esc(message)}</p>
       </div>
       ${emailFooter}
     `,
-    replyTo: email
+    ...(anonymous ? {} : { replyTo: email }),
   };
 
   return mailer.sendMail(mailOptions);

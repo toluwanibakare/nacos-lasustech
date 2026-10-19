@@ -168,7 +168,7 @@ app.use('/api/hoc', hocRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/services', servicesRoutes);
-app.use('/api/contact', contactRoutes);
+app.use('/api/contact', ipBackstop(30, 60 * 60 * 1000), contactRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 

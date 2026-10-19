@@ -102,6 +102,30 @@ if ($method === 'GET' && $action === 'get_all_payments') {
     )->fetchAll());
 }
 
+// Contact form, suggestion box and complaint box. Anonymous rows keep no name and no email.
+if ($action === 'submit_contact') {
+    need_post($method);
+    $in = input();
+    $kind = (string) ($in['kind'] ?? 'message');
+    if (!in_array($kind, ['message', 'suggestion', 'complaint'], true)) $kind = 'message';
+    $anonymous = !empty($in['is_anonymous']) ? 1 : 0;
+    $message = trim((string) ($in['message'] ?? ''));
+    if (mb_strlen($message) < 5) fail('Please write a little more.');
+    if (mb_strlen($message) > 3000) fail('Please keep it under 3000 characters.');
+    $subject = mb_substr(trim((string) ($in['subject'] ?? '')), 0, 200);
+    if ($anonymous) {
+        $name = 'Anonymous';
+        $email = '';
+    } else {
+        $name = mb_substr(trim((string) ($in['full_name'] ?? '')), 0, 200);
+        $email = mb_substr(trim((string) ($in['email'] ?? '')), 0, 250);
+        if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) fail('Your name and a valid email are required.');
+    }
+    $pdo->prepare('INSERT INTO contact_messages (kind, is_anonymous, full_name, email, subject, message) VALUES (?, ?, ?, ?, ?, ?)')
+        ->execute([$kind, $anonymous, $name, $email, $subject !== '' ? $subject : null, $message]);
+    json_out(['status' => 'success']);
+}
+
 if ($method === 'GET' && $action === 'get_messages') {
     json_out($pdo->query('SELECT * FROM contact_messages ORDER BY id DESC')->fetchAll());
 }

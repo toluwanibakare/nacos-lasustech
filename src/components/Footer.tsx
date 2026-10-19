@@ -33,6 +33,8 @@ const quickLinks = [
   { label: "Gallery", path: "/gallery" },
   { label: "Donate", path: "/donate" },
   { label: "Contact Us", path: "/contact" },
+  { label: "Suggestion Box", path: "/contact#suggestion" },
+  { label: "Complaint Box", path: "/contact#complaint" },
 ];
 
 const resourceLinks = [
