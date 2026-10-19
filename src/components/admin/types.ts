@@ -72,6 +72,8 @@ export interface IdRequest {
   level?: string | null;
   is_generated?: number | boolean | null;
   has_matric: number | boolean | null;
+  dues_exempt?: number | boolean | string | null;
+  dues_paid?: number | boolean | string | null;
 }
 
 export interface Payment {

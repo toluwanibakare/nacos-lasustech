@@ -93,7 +93,7 @@ export const adminFetch = async (endpoint: string, options: RequestInit = {}) =>
 };
 
 /** POST JSON with the admin token and return a binary file (used for ID card generation). */
-export const adminDownload = async (endpoint: string, body: unknown): Promise<{ blob: Blob; filename: string }> => {
+export const adminDownload = async (endpoint: string, body: unknown): Promise<{ blob: Blob; filename: string; skippedCount: number; skippedNames: string }> => {
   const token = localStorage.getItem("adminToken");
   if (!token) throw new Error("Admin token not available.");
 
@@ -110,7 +110,9 @@ export const adminDownload = async (endpoint: string, body: unknown): Promise<{ 
   const disposition = response.headers.get("Content-Disposition") || "";
   const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
   const ext = blob.type.includes("zip") ? "zip" : blob.type.includes("png") ? "png" : "bin";
-  return { blob, filename: match ? decodeURIComponent(match[1]) : `id-cards.${ext}` };
+  const skippedCount = Number(response.headers.get("X-Skipped-Count") || 0);
+  const skippedNames = decodeURIComponent(response.headers.get("X-Skipped-Names") || "");
+  return { blob, filename: match ? decodeURIComponent(match[1]) : `id-cards.${ext}`, skippedCount, skippedNames };
 };
 
 // ─── Voting admin fetch ───────────────────────────────────────────────────────

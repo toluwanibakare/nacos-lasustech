@@ -23,7 +23,10 @@ const STATUS_TONE: Record<string, "amber" | "blue" | "green" | "slate"> = {
 };
 const EDITABLE = ["pending", "processing", "ready", "collected"];
 
-const canGenerate = (r: IdRequest) => Boolean(r.has_matric) && r.student_id != null;
+const truthy = (v: unknown) => v === true || v === 1 || v === "1";
+// Dues and the ID card go together: a card is only printed once dues are paid (or the person is exempt).
+const duesOk = (r: IdRequest) => truthy(r.dues_paid) || truthy(r.dues_exempt);
+const canGenerate = (r: IdRequest) => Boolean(r.has_matric) && r.student_id != null && duesOk(r);
 
 const IdCards = () => {
   const { data, loading, error, reload } = useAdminData<IdRequest[]>("/admin/id-requests", []);
@@ -68,10 +71,11 @@ const IdCards = () => {
   const generate = () =>
     run(async () => {
       const ids = Array.from(new Set(picked.map((r) => r.student_id)));
-      const { blob, filename } = await adminDownload("/admin/id-cards/generate", { ids });
+      const { blob, filename, skippedCount, skippedNames } = await adminDownload("/admin/id-cards/generate", { ids });
       downloadBlob(blob, filename);
       setSelected(new Set());
       await reload();
+      if (skippedCount > 0) throw new Error(`Generated, but ${skippedCount} skipped because their dues are unpaid: ${skippedNames}`);
     }, `Generated ${picked.length} card${picked.length === 1 ? "" : "s"}.`);
 
   return (
@@ -121,14 +125,17 @@ const IdCards = () => {
                 {rows.map((r) => (
                   <tr key={r.id}>
                     <Td>
-                      <input type="checkbox" aria-label={`Select ${r.full_name}`} disabled={!canGenerate(r)} title={canGenerate(r) ? "" : "No matric number yet"} checked={selected.has(key(r))} onChange={() => toggle(r)} />
+                      <input type="checkbox" aria-label={`Select ${r.full_name}`} disabled={!canGenerate(r)} title={canGenerate(r) ? "" : !duesOk(r) ? "Dues not paid yet" : "No matric number yet"} checked={selected.has(key(r))} onChange={() => toggle(r)} />
                     </Td>
                     <Td className="font-semibold">{r.full_name}</Td>
                     <Td><Pill tone={r.account_type === "fresher" ? "blue" : "green"}>{r.account_type === "fresher" ? "Fresher" : "Stalite"}</Pill></Td>
                     <Td className="text-xs">{r.matric_number || (r.has_matric ? "-" : "None yet")}</Td>
                     <Td>{levelLabel(r.level)}</Td>
                     <Td>{formatNaira(r.fee_amount)}</Td>
-                    <Td><Pill tone={STATUS_TONE[r.status] || "slate"}>{STATUS_LABEL[r.status] || r.status}</Pill></Td>
+                    <Td>
+                      <Pill tone={STATUS_TONE[r.status] || "slate"}>{STATUS_LABEL[r.status] || r.status}</Pill>
+                      {!duesOk(r) && <div className="mt-1"><Pill tone="red">Dues unpaid</Pill></div>}
+                    </Td>
                     <Td className="text-xs">{formatDate(r.created_at)}</Td>
                     <Td>
                       <SelectField

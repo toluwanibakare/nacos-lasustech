@@ -481,6 +481,10 @@ router.post('/id-cards/generate', async (req, res, next) => {
       'Content-Type': response.headers['content-type'],
       'Content-Disposition': response.headers['content-disposition'] || 'attachment',
     });
+    // Students skipped because their dues are unpaid (the PHP API sets these).
+    ['x-skipped-count', 'x-skipped-names'].forEach((h) => {
+      if (response.headers[h]) res.set(h, response.headers[h]);
+    });
     res.send(Buffer.from(response.data));
   } catch (error) {
     if (error.response) {

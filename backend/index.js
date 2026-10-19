@@ -56,6 +56,7 @@ app.use(cors({
     return callback(new Error(`CORS policy: origin ${origin} not allowed.`));
   },
   credentials: true,
+  exposedHeaders: ['Content-Disposition', 'X-Skipped-Count', 'X-Skipped-Names'],
 }));
 
 /**

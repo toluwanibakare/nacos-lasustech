@@ -23,6 +23,7 @@ const DISPLAY_TYPE = {
   id_card: 'ID Card',
   id_replacement: 'ID Card Replacement',
   hoc_item: 'Course Material',
+  bundle: 'Session Dues and ID Card',
 };
 
 const LEGACY_TYPE = { nacos_dues: 'dues' };
@@ -58,7 +59,7 @@ router.post('/donate', async (req, res) => {
 // Kick off a payment
 router.post('/initialize', protect, async (req, res) => {
   const type = LEGACY_TYPE[req.body.payment_type] || req.body.payment_type;
-  if (!['dues', 'id_card', 'id_replacement', 'hoc_item'].includes(type)) {
+  if (!['dues', 'id_card', 'id_replacement', 'hoc_item', 'bundle'].includes(type)) {
     res.status(400).json({ message: 'Unsupported payment type.' });
     return;
   }
@@ -68,7 +69,38 @@ router.post('/initialize', protect, async (req, res) => {
 
     let amount;
     let hocItemId = null;
-    if (type === 'dues') {
+    let bundle = null;
+    if (type === 'bundle') {
+      // Dues and the ID card fee in one charge (still recorded as two payments).
+      if (req.user.account_type !== 'fresher') {
+        const me = await centralGet('hoc_profile', { matric: req.user.matric });
+        if (me.dues_exempt) {
+          res.status(409).json({ message: 'You do not pay dues. Pay only your ID card fee.' });
+          return;
+        }
+      }
+      if (payments.some((p) => p.payment_type === 'dues' && p.status === 'success' && p.session === fees.session)) {
+        res.status(409).json({ message: `Your dues for ${fees.session} are already paid. Pay only your ID card fee.` });
+        return;
+      }
+      const idStatus = await centralGet('id_card_status', identityParams(req.user));
+      if (!idStatus.request) {
+        res.status(409).json({ message: 'Complete your ID card application first.' });
+        return;
+      }
+      if (idStatus.request.status !== 'awaiting_payment') {
+        res.status(409).json({ message: 'Your ID card fee is already paid. Pay only your dues.' });
+        return;
+      }
+      const duesAmount = Number(fees.dues);
+      const cardAmount = Number(req.user.account_type === 'fresher' ? fees.id_card_fresher : fees.id_card_stalite);
+      if (!(duesAmount > 0) || !(cardAmount > 0)) {
+        res.status(500).json({ message: 'Fee is not configured. Please contact the admin.' });
+        return;
+      }
+      bundle = { dues_amount: duesAmount, id_card_amount: cardAmount };
+      amount = duesAmount + cardAmount;
+    } else if (type === 'dues') {
       if (req.user.account_type !== 'fresher') {
         const me = await centralGet('hoc_profile', { matric: req.user.matric });
         if (me.dues_exempt) {
@@ -136,7 +168,7 @@ router.post('/initialize', protect, async (req, res) => {
     const email = req.user.email || req.body.email || `${req.user.matric}@lasustech.edu.ng`;
 
     // Record the pending payment first; if that fails, nothing is charged.
-    await centralPost('log_payment_pending', { ...identityBody(req.user), amount, reference, payment_type: type, hoc_item_id: hocItemId });
+    await centralPost('log_payment_pending', { ...identityBody(req.user), amount, reference, payment_type: type, hoc_item_id: hocItemId, ...bundle });
 
     const paymentData = await KorapayService.initializeTransaction({
       email,
@@ -179,7 +211,8 @@ router.get('/verify/:reference', protect, async (req, res) => {
 
   try {
     const payments = await centralGet('payments', identityParams(req.user));
-    const mine = payments.find((p) => p.reference === reference);
+    const rows = payments.filter((p) => p.reference === reference || p.charge_reference === reference);
+    const mine = rows.length > 1 ? { ...rows[0], payment_type: 'bundle' } : rows[0];
     if (!mine) {
       res.status(404).json({ message: 'Payment not found.' });
       return;
@@ -242,6 +275,77 @@ router.post('/webhook', async (req, res) => {
   }
 
   res.status(200).send('Webhook Received');
+});
+
+/**
+ * Receipts
+ * ---------------------------------------------------------
+ * Dues and the ID card go together: anyone who has an ID card application can only get a
+ * dues or ID card receipt once BOTH are cleared (dues paid or exempt, ID card paid). People
+ * without an ID card application are not held back. Other payments (course materials) are free of this.
+ */
+const TIED_TYPES = ['dues', 'id_card'];
+
+const clearanceFor = async (user) => {
+  const idStatus = await centralGet('id_card_status', identityParams(user));
+  const tied = !!idStatus.request;
+  const duesCleared = !!idStatus.dues_cleared;
+  const idCleared = tied && idStatus.request.status !== 'awaiting_payment';
+  return { tied, duesCleared, idCleared, duesExempt: !!idStatus.dues_exempt };
+};
+
+const lockedReason = (c) => {
+  if (!c.tied || (c.duesCleared && c.idCleared)) return null;
+  if (!c.duesCleared && !c.idCleared) return 'Pay your dues and your ID card fee to unlock this receipt.';
+  return c.duesCleared ? 'Pay your ID card fee to unlock this receipt.' : 'Pay your dues to unlock this receipt.';
+};
+
+router.get('/receipt-status', protect, async (req, res) => {
+  try {
+    const c = await clearanceFor(req.user);
+    res.json({ ...c, locked_reason: lockedReason(c) });
+  } catch (error) {
+    sendCentralError(res, error, 'Could not check your receipts.');
+  }
+});
+
+router.get('/receipt/:reference', protect, async (req, res) => {
+  try {
+    const [payments, c] = await Promise.all([centralGet('payments', identityParams(req.user)), clearanceFor(req.user)]);
+    const payment = payments.find((p) => p.reference === req.params.reference || p.charge_reference === req.params.reference);
+    if (!payment) {
+      res.status(404).json({ message: 'Payment not found.' });
+      return;
+    }
+    if (payment.status !== 'success') {
+      res.status(409).json({ message: 'This payment was not completed, so there is no receipt.' });
+      return;
+    }
+    if (TIED_TYPES.includes(payment.payment_type)) {
+      const reason = lockedReason(c);
+      if (reason) {
+        res.status(403).json({ message: reason, locked: true });
+        return;
+      }
+    }
+    // A bundle shows as one receipt with each item listed.
+    const items = payments
+      .filter((p) => p.status === 'success' && p.charge_reference === payment.charge_reference)
+      .map((p) => ({ label: DISPLAY_TYPE[p.payment_type] || 'NACOS Payment', amount: Number(p.amount) }));
+    res.json({
+      receipt_no: `NACOS-R-${payment.id}`,
+      reference: payment.charge_reference || payment.reference,
+      date: payment.created_at,
+      session: payment.session,
+      name: req.user.name,
+      matric: req.user.account_type === 'fresher' ? null : req.user.matric,
+      account_type: req.user.account_type || 'student',
+      items,
+      total: items.reduce((sum, i) => sum + i.amount, 0),
+    });
+  } catch (error) {
+    sendCentralError(res, error, 'Could not load the receipt.');
+  }
 });
 
 export default router;

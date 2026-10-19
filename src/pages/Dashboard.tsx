@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Check, CreditCard, IdCard as IdIcon, LayoutDashboard, LogOut, User, AlertCircle, Save, Calendar, Home, Lock, BookOpen, Users, X } from "lucide-react";
+import { Check, CreditCard, IdCard as IdIcon, LayoutDashboard, LogOut, User, AlertCircle, Save, Calendar, Home, Lock, BookOpen, Users, X, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,6 +16,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import FeedbackForm from "@/components/FeedbackForm";
+import { downloadReceipt, fetchReceipt, fetchReceiptStatus, ReceiptStatus } from "@/lib/receipt";
 import IdCardApplication from "@/components/IdCardApplication";
 import HocPanel from "@/components/HocPanel";
 import MaterialsPanel from "@/components/MaterialsPanel";
@@ -58,6 +59,7 @@ interface PaymentRow {
   payment_type: string;
   session?: string | null;
   hoc_item_id?: number | string | null;
+  charge_reference?: string;
   created_at?: string;
 }
 
@@ -187,6 +189,8 @@ const Dashboard = () => {
 
   const duesAmount = Number(fees?.dues ?? 0);
   const duesExempt = profile.duesExempt;
+  const idAwaitingPayment = profile.idCardStatus === "Awaiting payment";
+  const idCardFee = Number((isFresher ? fees?.id_card_fresher : fees?.id_card_stalite) ?? 0);
   const duesPaid = hasPaidDues(payments, fees?.session);
   const amountOwing = duesPaid || duesExempt ? 0 : duesAmount;
 
@@ -508,12 +512,35 @@ const Dashboard = () => {
     }
   };
 
-  const handlePayment = async () => {
+  const [receiptStatus, setReceiptStatus] = useState<ReceiptStatus | null>(null);
+  const [receiptBusy, setReceiptBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeTab !== "dues") return;
+    let cancelled = false;
+    fetchReceiptStatus().then((s) => { if (!cancelled) setReceiptStatus(s); }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [activeTab, payments]);
+
+  const getReceipt = async (pay: PaymentRow) => {
+    const ref = pay.charge_reference || pay.reference;
+    if (!ref) return;
+    setReceiptBusy(ref);
+    try {
+      await downloadReceipt(await fetchReceipt(ref));
+    } catch (err: any) {
+      toast({ title: "Receipt not available", description: err.message || "Could not create the receipt.", variant: "destructive" });
+    } finally {
+      setReceiptBusy(null);
+    }
+  };
+
+  const handlePayment = async (type: 'dues' | 'bundle' = 'dues') => {
     try {
       toast({ title: "Processing...", description: "Opening payment portal." });
       const data = await fetchApi('/payments/initialize', {
         method: 'POST',
-        body: JSON.stringify({ payment_type: 'dues' })
+        body: JSON.stringify({ payment_type: type })
       });
       
       if (data.data?.authorization_url) {
@@ -1059,6 +1086,23 @@ const Dashboard = () => {
                               </div>
                               <div className="text-right">
                                 <p className="text-sm font-bold text-foreground">₦{Number(pay.amount || 0).toLocaleString()}</p>
+                                {ok && ['dues', 'id_card', 'id_replacement', 'hoc_item'].includes(pay.payment_type) && (() => {
+                                  const tied = pay.payment_type === 'dues' || pay.payment_type === 'id_card';
+                                  const locked = tied ? receiptStatus?.locked_reason : null;
+                                  const ref = pay.charge_reference || pay.reference || '';
+                                  return (
+                                    <button
+                                      type="button"
+                                      disabled={!!locked || receiptBusy === ref}
+                                      title={locked || "Download receipt"}
+                                      onClick={() => getReceipt(pay)}
+                                      className="mt-1 inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-0.5 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:text-muted-foreground disabled:opacity-60"
+                                    >
+                                      {locked ? <Lock className="h-3 w-3" /> : <Download className="h-3 w-3" />}
+                                      {receiptBusy === ref ? "Preparing..." : "Receipt"}
+                                    </button>
+                                  );
+                                })()}
                                 <p className={`text-[10px] font-medium capitalize ${ok ? 'text-green-600' : failed ? 'text-red-600' : 'text-amber-600'}`}>
                                   {ok ? 'Successful' : pay.status}
                                 </p>
@@ -1085,12 +1129,27 @@ const Dashboard = () => {
                         : <>Instant verification. Skip the wait and pay your {fees ? `₦${duesAmount.toLocaleString()} ` : ""}session dues via Korapay.</>}
                     </p>
                     <Button 
-                      onClick={handlePayment} 
-                      className="mt-6 w-full rounded-xl shadow-lg shadow-primary/20"
+                      onClick={() => handlePayment('dues')} 
+                      className="mt-6 w-full rounded-full"
                       disabled={duesPaid || duesExempt || !fees}
                     >
-                      {duesExempt ? 'Exempt from Dues' : duesPaid ? 'Dues Already Paid' : 'Pay Now with Korapay'}
+                      {duesExempt ? 'Exempt from Dues' : duesPaid ? 'Dues Already Paid' : 'Pay Dues with Korapay'}
                     </Button>
+                    {!duesPaid && !duesExempt && idAwaitingPayment && fees && (
+                      <div className="mt-3">
+                        <Button onClick={() => handlePayment('bundle')} variant="outline" className="w-full rounded-full">
+                          Pay Dues and ID Card Together
+                        </Button>
+                        <p className="mt-2 text-center text-[10px] text-muted-foreground">
+                          One payment of ₦{(duesAmount + idCardFee).toLocaleString()} covers both.
+                        </p>
+                      </div>
+                    )}
+                    {receiptStatus?.tied && receiptStatus.locked_reason && (
+                      <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-center text-[11px] leading-relaxed text-amber-800">
+                        Dues and your ID card go together. {receiptStatus.locked_reason}
+                      </p>
+                    )}
                     <p className="mt-4 text-center text-[10px] text-muted-foreground">
                       Powered by <strong>Korapay</strong>. All transactions are secure.
                     </p>

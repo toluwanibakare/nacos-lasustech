@@ -27,6 +27,10 @@ interface IdCardStatus {
   photo: { image_path: string | null; zoom: number | null; cx: number | null; cy: number | null } | null;
   card_issuable: boolean;
   card_note: string | null;
+  editable?: boolean;
+  dues_exempt?: boolean;
+  dues_cleared?: boolean;
+  dues_fee?: number;
 }
 
 interface StoredUser {
@@ -226,12 +230,12 @@ const IdCardApplication = () => {
     }
   };
 
-  const onPay = async () => {
+  const onPay = async (type: "id_card" | "bundle" = "id_card") => {
     setPaying(true);
     try {
       const data = await fetchApi("/payments/initialize", {
         method: "POST",
-        body: JSON.stringify({ payment_type: "id_card" }),
+        body: JSON.stringify({ payment_type: type }),
       });
       const url = data?.data?.authorization_url;
       if (!url) throw new Error("No payment link was returned");
@@ -261,7 +265,10 @@ const IdCardApplication = () => {
 
   const req = status.request;
   const paid = !!req && req.status !== "awaiting_payment";
-  const canEdit = !req || req.status === "awaiting_payment" || (req.status === "pending" && editing);
+  // An application can be changed until the card has been generated.
+  const editable = status.editable !== false;
+  const canEdit = !req || req.status === "awaiting_payment" || (editable && editing);
+  const duesOwed = !status.dues_cleared && !status.dues_exempt;
 
   // (a) read-only summary
   if (paid && req && !canEdit) {
@@ -285,12 +292,20 @@ const IdCardApplication = () => {
           <dt className="text-muted-foreground">Emergency contact</dt><dd>{req.emergency_contact || "-"}</dd>
           <dt className="text-muted-foreground">Fee paid</dt><dd>₦{Number(req.fee_amount).toLocaleString()}</dd>
         </dl>
-        {req.status === "pending" && (
+        {duesOwed && (
+          <div className="flex gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <Info className="mt-0.5 h-4 w-4 shrink-0" /> Your dues are not paid yet. Dues and the ID card go together, so your card is printed once your dues are paid. Pay them in the Dues &amp; Fees tab.
+          </div>
+        )}
+        {editable ? (
           <div className="text-center">
             <Button variant="outline" className="rounded-full" onClick={() => setEditing(true)}>
               Edit photo and details
             </Button>
+            <p className="mt-2 text-xs text-muted-foreground">You can change your photo and details until your card is generated.</p>
           </div>
+        ) : (
+          <p className="text-center text-xs text-muted-foreground">Your card has been generated, so it can no longer be changed.</p>
         )}
       </div>
     );
@@ -375,10 +390,20 @@ const IdCardApplication = () => {
           <div className="flex items-center gap-2 text-sm text-green-900">
             <CheckCircle2 className="h-4 w-4" /> Application saved. Pay the ID card fee to continue.
           </div>
-          <Button className="rounded-full" onClick={onPay} disabled={paying || saving}>
-            {paying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Pay ₦{Number(status.fee).toLocaleString()}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant={duesOwed ? "outline" : "default"} className="rounded-full" onClick={() => onPay("id_card")} disabled={paying || saving}>
+              {paying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Pay ID card ₦{Number(status.fee).toLocaleString()}
+            </Button>
+            {duesOwed && (
+              <Button className="rounded-full" onClick={() => onPay("bundle")} disabled={paying || saving}>
+                Pay dues and ID card ₦{(Number(status.fee) + Number(status.dues_fee || 0)).toLocaleString()}
+              </Button>
+            )}
+          </div>
         </div>
+      )}
+      {hasSaved && req?.status === "awaiting_payment" && duesOwed && (
+        <p className="text-xs text-muted-foreground">Dues and the ID card go together. You can pay them separately, but your card is printed and your receipts are released once both are paid.</p>
       )}
       {!hasSaved && (
         <p className="text-sm text-muted-foreground">

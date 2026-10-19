@@ -75,6 +75,23 @@ function is_dues_exempt(?string $post): bool
     return !in_array(strtolower(trim((string) $post)), ['', 'student', 'fresher'], true);
 }
 
+/** Dues are cleared when the person is exempt, or has a successful dues payment for the current session. */
+function dues_cleared(PDO $pdo, string $col, int $pid, ?string $post = null): bool
+{
+    if ($col === 'student_id' && is_dues_exempt($post)) return true;
+    $stmt = $pdo->prepare("SELECT 1 FROM payments WHERE $col = ? AND payment_type = 'dues' AND status = 'success' AND session = ? LIMIT 1");
+    $stmt->execute([$pid, current_session($pdo)]);
+    return (bool) $stmt->fetchColumn();
+}
+
+/** An ID card application can be edited until the card has been generated. */
+function id_application_locked(?array $request, ?array $row): bool
+{
+    if (!$request) return false;
+    if (in_array($request['status'], ['ready', 'collected'], true)) return true;
+    return !empty($row['is_generated']);
+}
+
 function student_view(array $s): array
 {
     $s = public_row($s);
@@ -416,12 +433,12 @@ if ($action === 'id_application') {
     $hasUpload = isset($_FILES['image']) && ($_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
     if (!$hasUpload && empty($row['image_path'])) fail('Upload your passport photograph.');
 
-    // One application per person; editable only until it has been paid and picked up.
+    // One application per person; editable until the card has been generated.
     $stmt = $pdo->prepare("SELECT * FROM id_card_requests WHERE $col = ? ORDER BY id DESC LIMIT 1");
     $stmt->execute([$pid]);
     $existing = $stmt->fetch() ?: null;
-    if ($existing && !in_array($existing['status'], ['awaiting_payment', 'pending'], true)) {
-        fail('Your ID card is already being processed and can no longer be changed.', 409);
+    if (id_application_locked($existing, $row)) {
+        fail('Your ID card has already been generated and can no longer be changed.', 409);
     }
 
     $oldImage = $row['image_path'] ?? null;
@@ -475,6 +492,7 @@ if ($method === 'GET' && $action === 'id_card_status') {
     $request = $stmt->fetch() ?: null;
 
     $row = $person['row'];
+    [$col_status, $pid_status] = person_key($person);
     $hasMatric = !empty($row['matric_no']);
     $paid = $request && $request['status'] !== 'awaiting_payment';
     json_out([
@@ -485,19 +503,27 @@ if ($method === 'GET' && $action === 'id_card_status') {
         // Freshers pay and arrange their photo now, but the card is only issued once a matric number exists.
         'card_issuable' => $paid && $hasMatric,
         'card_note' => $paid && !$hasMatric ? 'Your card will be issued once your matric number is assigned.' : null,
+        'editable' => !id_application_locked($request, $row),
+        'dues_fee' => (float) setting($pdo, 'fee_dues', '2000'),
+        'dues_exempt' => $person['type'] === 'student' && is_dues_exempt($row['post'] ?? null),
+        'dues_cleared' => dues_cleared($pdo, $col_status, (int) $pid_status, $row['post'] ?? null),
     ]);
 }
 
 if ($method === 'GET' && $action === 'get_id_requests') {
-    $rows = $pdo->query(
+    $stmt = $pdo->prepare(
         "SELECT r.*, COALESCE(s.department, f.department) AS department, COALESCE(s.level, '100') AS level,
-                s.is_generated, (COALESCE(s.matric_no, f.matric_no) IS NOT NULL) AS has_matric
+                s.is_generated, (COALESCE(s.matric_no, f.matric_no) IS NOT NULL) AS has_matric,
+                (s.post IS NOT NULL AND LOWER(TRIM(s.post)) NOT IN ('', 'student', 'fresher')) AS dues_exempt,
+                EXISTS(SELECT 1 FROM payments p WHERE p.payment_type = 'dues' AND p.status = 'success' AND p.session = :sess
+                       AND (p.student_id = r.student_id OR p.fresher_id = r.fresher_id)) AS dues_paid
          FROM id_card_requests r
          LEFT JOIN students s ON s.id = r.student_id
          LEFT JOIN freshers f ON f.id = r.fresher_id
          ORDER BY r.id DESC"
-    )->fetchAll();
-    json_out($rows);
+    );
+    $stmt->execute([':sess' => current_session($pdo)]);
+    json_out($stmt->fetchAll());
 }
 
 if ($action === 'set_id_request_status') {
@@ -522,7 +548,11 @@ if ($method === 'GET' && $action === 'payments') {
     [$col, $pid] = person_key($person);
     $stmt = $pdo->prepare("SELECT id, amount, reference, status, payment_type, session, hoc_item_id, created_at FROM payments WHERE $col = ? ORDER BY id DESC");
     $stmt->execute([$pid]);
-    json_out($stmt->fetchAll());
+    // A bundle (dues + ID card in one charge) keeps one row per item; the customer sees one charge reference.
+    json_out(array_map(static function ($p) {
+        $p['charge_reference'] = preg_replace('/~[DI]$/', '', (string) $p['reference']);
+        return $p;
+    }, $stmt->fetchAll()));
 }
 
 if ($action === 'log_payment_pending') {
@@ -535,6 +565,20 @@ if ($action === 'log_payment_pending') {
     if ($reference === '' || !is_numeric($amount) || (float) $amount <= 0) fail('reference and a positive amount are required.');
 
     $type = (string) ($in['payment_type'] ?? 'dues');
+
+    // Dues and the ID card fee paid in one Korapay charge: two rows, one per item, sharing the charge reference.
+    if ($type === 'bundle') {
+        $dues = $in['dues_amount'] ?? null;
+        $card = $in['id_card_amount'] ?? null;
+        if (!is_numeric($dues) || !is_numeric($card) || (float) $dues <= 0 || (float) $card <= 0) fail('dues_amount and id_card_amount are required.');
+        if (abs((float) $dues + (float) $card - (float) $amount) > 0.009) fail('The two amounts must add up to the total.');
+        $insert = $pdo->prepare("INSERT IGNORE INTO payments ($col, amount, reference, status, payment_type, session) VALUES (?, ?, ?, 'pending', ?, ?)");
+        $session = current_session($pdo);
+        $insert->execute([$pid, (float) $dues, $reference . '~D', 'dues', $session]);
+        $insert->execute([$pid, (float) $card, $reference . '~I', 'id_card', $session]);
+        json_out(['status' => 'success']);
+    }
+
     $hocItem = $type === 'hoc_item' ? (int) ($in['hoc_item_id'] ?? 0) : null;
     $pdo->prepare("INSERT IGNORE INTO payments ($col, amount, reference, status, payment_type, session, hoc_item_id) VALUES (?, ?, ?, 'pending', ?, ?, ?)")
         ->execute([$pid, (float) $amount, $reference, $type, current_session($pdo), $hocItem ?: null]);
@@ -545,26 +589,29 @@ if ($action === 'log_payment_success') {
     need_post($method);
     $in = input();
     $reference = trim((string) ($in['reference'] ?? ''));
-    $stmt = $pdo->prepare('SELECT * FROM payments WHERE reference = ? LIMIT 1');
-    $stmt->execute([$reference]);
-    $payment = $stmt->fetch();
+    $stmt = $pdo->prepare('SELECT * FROM payments WHERE reference IN (?, ?, ?) ORDER BY id');
+    $stmt->execute([$reference, $reference . '~D', $reference . '~I']);
+    $payments = $stmt->fetchAll();
 
-    if (!$payment) fail('Unknown payment reference. Log the payment as pending first.', 404);
-    if ($payment['status'] === 'success') json_out(['status' => 'success', 'already' => true]);
+    if (!$payments) fail('Unknown payment reference. Log the payment as pending first.', 404);
+    if (!array_filter($payments, static fn($p) => $p['status'] !== 'success')) json_out(['status' => 'success', 'already' => true]);
 
-    // The paid amount must match what was initialised.
-    if (isset($in['amount']) && abs((float) $in['amount'] - (float) $payment['amount']) > 0.009) {
+    // The paid amount must match what was initialised (for a bundle, dues plus ID card).
+    $expected = array_sum(array_map(static fn($p) => (float) $p['amount'], $payments));
+    if (isset($in['amount']) && abs((float) $in['amount'] - $expected) > 0.009) {
         fail('Paid amount does not match the initialised amount.', 422);
     }
 
     $pdo->beginTransaction();
     try {
-        $pdo->prepare("UPDATE payments SET status = 'success' WHERE id = ?")->execute([$payment['id']]);
-        if ($payment['payment_type'] === 'id_card') {
-            $col = $payment['fresher_id'] ? 'fresher_id' : 'student_id';
-            $pid = $payment['fresher_id'] ?: $payment['student_id'];
-            $pdo->prepare("UPDATE id_card_requests SET status = 'pending', payment_reference = ? WHERE $col = ? AND status = 'awaiting_payment'")
-                ->execute([$reference, $pid]);
+        foreach ($payments as $payment) {
+            $pdo->prepare("UPDATE payments SET status = 'success' WHERE id = ?")->execute([$payment['id']]);
+            if ($payment['payment_type'] === 'id_card') {
+                $col = $payment['fresher_id'] ? 'fresher_id' : 'student_id';
+                $pid = $payment['fresher_id'] ?: $payment['student_id'];
+                $pdo->prepare("UPDATE id_card_requests SET status = 'pending', payment_reference = ? WHERE $col = ? AND status = 'awaiting_payment'")
+                    ->execute([$reference, $pid]);
+            }
         }
         $pdo->commit();
     } catch (Throwable $e) {
@@ -626,6 +673,19 @@ if ($action === 'generate_cards') {
     $stmt->execute($ids);
     $students = $stmt->fetchAll();
     if (!$students) fail('No eligible students (a matric number is required).');
+
+    // Dues and the ID card go together: a card is only printed once dues are paid (or the person is exempt).
+    $skipped = [];
+    $students = array_values(array_filter($students, static function ($st) use ($pdo, &$skipped) {
+        if (dues_cleared($pdo, 'student_id', (int) $st['id'], $st['post'] ?? null)) return true;
+        $skipped[] = $st['full_name'];
+        return false;
+    }));
+    if ($skipped) {
+        header('X-Skipped-Count: ' . count($skipped));
+        header('X-Skipped-Names: ' . rawurlencode(implode(', ', array_slice($skipped, 0, 30))));
+    }
+    if (!$students) fail('None of the selected students have paid their dues, so no cards were generated. Unpaid: ' . implode(', ', array_slice($skipped, 0, 10)) . '.', 409);
 
     $template = @imagecreatefrompng(__DIR__ . '/assets/Id_card_design.png');
     $fonts = card_fonts(__DIR__);
