@@ -211,6 +211,7 @@ const IdCardApplication = () => {
 
   const onSave = async () => {
     if (!imageSrc) return toast({ title: "Add a photo first", variant: "destructive" });
+    if (!acknowledged) return toast({ title: "Tick the guidelines box", description: "Confirm you have read the photo guidelines, then save.", variant: "destructive" });
     if (!bloodGroup || !birthday) return toast({ title: "Choose a blood group and enter your birthday", variant: "destructive" });
     if (!/^0\d{10}$/.test(emergency)) {
       return toast({ title: "Enter a valid 11-digit Nigerian phone number for your emergency contact", variant: "destructive" });
@@ -356,19 +357,10 @@ const IdCardApplication = () => {
       <div className="space-y-2">
         <input id="id-photo-input" ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={onPickFile} />
         <Button asChild variant="outline" className="h-11 cursor-pointer rounded-full px-5">
-          <label
-            htmlFor="id-photo-input"
-            onClick={(e) => {
-              if (!acknowledged) {
-                e.preventDefault();
-                toast({ title: "Tick the box first", description: "Confirm you have read the photo guidelines, then choose your photo.", variant: "destructive" });
-              }
-            }}
-          >
+          <label htmlFor="id-photo-input">
             <Upload className="mr-2 h-4 w-4" /> {imageSrc ? "Change photo" : "Choose photo"}
           </label>
         </Button>
-        {!acknowledged && <p className="text-xs text-muted-foreground">Tick the box above first, then choose your photo.</p>}
         {fileError && <p className="text-sm text-destructive">{fileError}</p>}
       </div>
 

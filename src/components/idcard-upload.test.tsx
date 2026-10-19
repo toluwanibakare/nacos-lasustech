@@ -24,7 +24,7 @@ afterEach(() => {
 });
 
 describe("ID card photo upload button", () => {
-  it("is always clickable: before the guidelines are ticked it explains why, then it opens the picker", async () => {
+  it("opens the photo picker straight away, and the guidelines tick is checked when saving", async () => {
     localStorage.setItem("user", JSON.stringify({ name: "Ada Obi", account_type: "fresher", level: "100" }));
     (globalThis as any).fetch = vi.fn(async () => ({ ok: true, status: 200, json: async () => status }));
     render(
@@ -35,18 +35,12 @@ describe("ID card photo upload button", () => {
     );
     const chooser = await screen.findByText("Choose photo");
     const label = chooser.closest("label") as HTMLLabelElement;
-    expect(label).toBeTruthy();
     expect(label.getAttribute("for")).toBe("id-photo-input");
     const input = document.getElementById("id-photo-input") as HTMLInputElement;
     expect(input.type).toBe("file");
     expect(input.disabled).toBe(false);
 
-    // Not ticked yet: the click is explained, not silently dead.
-    fireEvent.click(label);
-    await waitFor(() => expect(screen.getByText("Tick the box first")).toBeTruthy());
-
-    // Ticked: the click is allowed through to the file input.
-    fireEvent.click(screen.getByRole("checkbox"));
+    // Not ticked, and the click still reaches the file input.
     const clicks = vi.fn();
     input.addEventListener("click", clicks);
     fireEvent.click(label);

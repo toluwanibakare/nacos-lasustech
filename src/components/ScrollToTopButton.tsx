@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { ArrowUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const ScrollToTopButton = () => {
+  // The dashboard has a bottom navigation on phones; sit above it.
+  const onDashboard = useLocation().pathname.startsWith("/dashboard");
   const [isVisible, setIsVisible] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
 
@@ -50,7 +53,7 @@ const ScrollToTopButton = () => {
           exit={{ opacity: 0, scale: 0.5, y: 20 }}
           transition={{ duration: 0.3 }}
           onClick={scrollToTop}
-          className="fixed bottom-6 right-6 z-50 flex items-center justify-center focus:outline-none group"
+          className={`fixed right-6 z-50 flex items-center justify-center focus:outline-none group ${onDashboard ? "bottom-24 lg:bottom-6" : "bottom-6"}`}
           aria-label="Scroll to top"
         >
           {/* SVG Progress Circle */}
