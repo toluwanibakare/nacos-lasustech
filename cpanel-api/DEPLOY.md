@@ -7,7 +7,7 @@ NACOS website.
 
 ## Order (staging first if you have one; otherwise live)
 1. Export a full backup of `tmbitcom_nacosid` from phpMyAdmin.
-2. Run `id-card/sql/001_schema_additions.sql`, then `003_id_card_flow.sql`, then `004_content_and_admin_access.sql`, then `005_seed_content.sql`, then `006_executives_by_session.sql`, then `007_materials_library.sql`, then `008_email_log.sql`.
+2. Run `id-card/sql/001_schema_additions.sql`, then `003_id_card_flow.sql`, then `004_content_and_admin_access.sql`, then `005_seed_content.sql`, then `006_executives_by_session.sql`, then `007_materials_library.sql`, then `008_email_log.sql`, `009_departments.sql`, `010_feedback_box.sql`, `011_community_link.sql`, `012_class_group_link.sql`, and `013_stalite_registration.sql`.
    (`002_session_rollover_2026_2027.sql` is the one-time rollover: already run.)
    `005` copies the current executives and events into the database. It is safe to re-run.
 3. Upload the new zip BEFORE deploying the new Node backend: the backend now reads executives, events,

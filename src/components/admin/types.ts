@@ -21,6 +21,7 @@ export interface Student {
   email_verified?: number | boolean | null;
   whatsapp_number?: string | null;
   dues_exempt?: boolean | number | string;
+  account_status?: string | null;
   gender?: string | null;
   birthday?: string | null;
   post: string | null;

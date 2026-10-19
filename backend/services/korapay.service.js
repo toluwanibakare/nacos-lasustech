@@ -32,7 +32,7 @@ class KorapayService {
           // false = the payer covers Korapay's charges, so NACOS receives the full amount
           merchant_bears_cost: false,
           notification_url: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/payments/webhook`,
-          redirect_url: `${process.env.FRONTEND_URL || 'http://localhost:8080'}/dashboard`,
+          redirect_url: `${process.env.FRONTEND_URL || 'http://localhost:8080'}${data.redirectPath || '/dashboard'}`,
           metadata: data.metadata || {}
 
         },

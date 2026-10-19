@@ -9,6 +9,7 @@ import Executives from "./pages/Executives.tsx";
 import Events from "./pages/Events.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import VerifyReceipt from "./pages/VerifyReceipt";
+import StaliteRegistration from "./pages/StaliteRegistration";
 import Contact from "./pages/Contact.tsx";
 import Constitution from "./pages/Constitution.tsx";
 import EventGallery from "./pages/EventGallery.tsx";
@@ -57,6 +58,7 @@ const AnimatedRoutes = ({ awardsMode }: { awardsMode: boolean }) => {
             } />
             <Route path="/admin" element={<AdminPortal />} />
             <Route path="/verify/:code" element={<VerifyReceipt />} />
+            <Route path="/register-id-card" element={<StaliteRegistration />} />
             <Route path="/contact" element={awardsMode ? <NotFound /> : <Contact />} />
             <Route path="/constitution" element={awardsMode ? <NotFound /> : <Constitution />} />
             <Route path="/gallery" element={awardsMode ? <NotFound /> : <Gallery />} />

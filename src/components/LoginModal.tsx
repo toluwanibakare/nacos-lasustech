@@ -248,6 +248,16 @@ const LoginModal = ({ open, onClose, redirectTab }: LoginModalProps) => {
             <Button disabled={loading} type="submit" className="w-full h-12 rounded-xl font-bold shadow-lg shadow-primary/20 transition-all active:scale-[0.98]">
               {loading ? "Signing in..." : "Sign In to Portal"}
             </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              Don&apos;t have an account?{" "}
+              <button
+                type="button"
+                onClick={() => { onClose(); navigate("/register-id-card"); }}
+                className="font-bold text-primary hover:underline"
+              >
+                Register for ID card
+              </button>
+            </p>
           </form>
         ) : view === "forgot" ? (
           <form onSubmit={handleForgotPassword} className="mt-4 space-y-5">

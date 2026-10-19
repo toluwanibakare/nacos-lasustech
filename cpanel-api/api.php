@@ -247,6 +247,9 @@ if ($action === 'login') {
     if (($student['level'] ?? '') === 'alumni') {
         fail('Alumni accounts cannot sign in to the portal.', 403);
     }
+    if (($student['account_status'] ?? 'active') === 'pending_payment') {
+        fail('Your registration is not complete. Pay your ID card fee to activate your account, then sign in.', 403);
+    }
 
     $password = (string) ($in['password'] ?? '');
     $ok = false;
@@ -346,6 +349,72 @@ if ($action === 'update_profile') {
 }
 
 // ─── Fresher accounts (new 100L, no matric yet) ──────────────────────────────
+
+// ─── Stalite self registration (a student with no record registers for the ID card) ───
+// No email code, no password: the account is 'pending_payment' until the ID card fee is paid, and cannot sign in before that.
+
+if ($action === 'stalite_register') {
+    need_post($method);
+    $in = $_POST ?: input();
+
+    $name = trim((string) ($in['full_name'] ?? ''));
+    if (mb_strlen($name) < 3 || mb_strlen($name) > 200) fail('Enter your full name.');
+    $matric = strtoupper(trim((string) ($in['matric_number'] ?? '')));
+    if (!preg_match('/^[A-Z0-9\/-]{6,100}$/', $matric)) fail('Enter a valid matric number.');
+    $level = (string) ($in['level'] ?? '');
+    if (!in_array($level, ['200', '300', '400'], true)) fail('Select your level (200, 300 or 400).');
+    $dept = trim((string) ($in['department'] ?? ''));
+    if (!in_array($dept, allowed_departments($pdo), true)) fail('Select a valid department.');
+    // Only what is on the card (plus department, which a student cannot change later). Email, WhatsApp, birthday, gender
+    // and a new password come from "update your profile" after they sign in; until then the default password applies.
+    $crop = parse_crop($in['photo_zoom'] ?? null, $in['photo_cx'] ?? null, $in['photo_cy'] ?? null);
+    if ($crop === null) fail('Photo arrangement is missing or invalid.');
+    if (!isset($_FILES['image']) || ($_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) fail('Upload your passport photograph.');
+
+    $existing = find_student_by_matric($pdo, $matric);
+    if ($existing && ($existing['account_status'] ?? 'active') !== 'pending_payment') {
+        fail('This matric number already has an account. Sign in instead (your default password is your first name in lowercase), or use Forgot Password.', 409);
+    }
+
+    $image = store_photo($_FILES['image'], $matric);
+    $fee = id_card_fee($pdo, 'student');
+
+    $pdo->beginTransaction();
+    try {
+        if ($existing) {
+            // An unpaid registration for this matric number: the latest submission replaces it.
+            $pdo->prepare(
+                "UPDATE students SET full_name = ?, level = ?, department = ?, image_path = ?, photo_zoom = ?, photo_cx = ?, photo_cy = ?, is_generated = 0 WHERE id = ?"
+            )->execute([$name, $level, $dept, $image, $crop['zoom'], $crop['cx'], $crop['cy'], $existing['id']]);
+            $studentId = (int) $existing['id'];
+        } else {
+            $pdo->prepare(
+                "INSERT INTO students (full_name, level, department, post, account_status, matric_no, image_path, photo_zoom, photo_cx, photo_cy)
+                 VALUES (?, ?, ?, 'Student', 'pending_payment', ?, ?, ?, ?, ?)"
+            )->execute([$name, $level, $dept, $matric, $image, $crop['zoom'], $crop['cx'], $crop['cy']]);
+            $studentId = (int) $pdo->lastInsertId();
+        }
+
+        $stmt = $pdo->prepare('SELECT id, status FROM id_card_requests WHERE student_id = ? ORDER BY id DESC LIMIT 1');
+        $stmt->execute([$studentId]);
+        $request = $stmt->fetch() ?: null;
+        if ($request) {
+            $pdo->prepare('UPDATE id_card_requests SET passport_url = ?, full_name = ?, matric_number = ?, fee_amount = ? WHERE id = ?')
+                ->execute([$image, $name, $matric, $fee, $request['id']]);
+        } else {
+            $pdo->prepare("INSERT INTO id_card_requests (student_id, account_type, passport_url, full_name, matric_number, fee_amount, status) VALUES (?, 'student', ?, ?, ?, ?, 'awaiting_payment')")
+                ->execute([$studentId, $image, $name, $matric, $fee]);
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        delete_photo($image);
+        fail('Could not save your registration. Please try again.', 500);
+    }
+    if ($existing && !empty($existing['image_path']) && $existing['image_path'] !== $image) delete_photo($existing['image_path']);
+
+    json_out(['status' => 'success', 'id' => $studentId, 'matric_no' => $matric, 'full_name' => $name]);
+}
 
 if ($action === 'fresher_register') {
     need_post($method);
@@ -656,6 +725,10 @@ if ($action === 'log_payment_success') {
             if ($payment['payment_type'] === 'id_card') {
                 $col = $payment['fresher_id'] ? 'fresher_id' : 'student_id';
                 $pid = $payment['fresher_id'] ?: $payment['student_id'];
+                // A new stalite who registered for the ID card is activated by paying for it.
+                if ($col === 'student_id') {
+                    $pdo->prepare("UPDATE students SET account_status = 'active' WHERE id = ? AND account_status = 'pending_payment'")->execute([$pid]);
+                }
                 $pdo->prepare("UPDATE id_card_requests SET status = 'pending', payment_reference = ? WHERE $col = ? AND status = 'awaiting_payment'")
                     ->execute([$reference, $pid]);
             }
@@ -1094,7 +1167,7 @@ function audience_sql(array $a): array
     if (in_array($type, ['level', 'level_department'], true) && !in_array($level, ['100', '200', '300', '400'], true)) fail('Select a level.');
     if (in_array($type, ['department', 'level_department'], true) && $dept === '') fail('Select a department.');
 
-    $studentWhere = ["email IS NOT NULL", "email <> ''"];
+    $studentWhere = ["email IS NOT NULL", "email <> ''", "account_status = 'active'"];
     $studentArgs = [];
     $fresherWhere = ["email_verified = 1", "status <> 'disabled'", "status <> 'promoted'"];
     $fresherArgs = [];
@@ -1148,7 +1221,7 @@ function audience_total(PDO $pdo, array $a): int
     $type = (string) ($a['type'] ?? 'all');
     $level = (string) ($a['level'] ?? '');
     $dept = (string) ($a['department'] ?? '');
-    $sw = [];
+    $sw = ["account_status = 'active'"];
     $sa = [];
     $fw = ["status <> 'disabled'", "status <> 'promoted'"];
     $fa = [];

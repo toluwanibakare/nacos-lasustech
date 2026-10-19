@@ -39,3 +39,26 @@ export const shrinkToLimit = async (file: File, maxBytes: number, minSide: numbe
     URL.revokeObjectURL(url);
   }
 };
+
+/** Checks a chosen file is a JPG, PNG or WEBP image and not too small. Returns an error message, or null when fine. */
+export const checkImage = (file: File, minSide: number): Promise<string | null> =>
+  new Promise((resolve) => {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      return resolve("Photo must be a JPG, PNG or WEBP image.");
+    }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(
+        Math.min(img.naturalWidth, img.naturalHeight) < minSide
+          ? `Photo is too small. The shorter side must be at least ${minSide}px.`
+          : null,
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve("That file could not be read as an image.");
+    };
+    img.src = url;
+  });

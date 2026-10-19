@@ -2,7 +2,7 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import { ipBackstop } from '../middleware/rate-limits.js';
 import KorapayService from '../services/korapay.service.js';
-import protect from '../middleware/auth.middleware.js';
+import protect, { protectOrSignup } from '../middleware/auth.middleware.js';
 import emailService from '../services/email.service.js';
 import { centralGet, centralPost, identityBody, identityParams, sendCentralError } from '../services/central.service.js';
 
@@ -59,8 +59,13 @@ router.post('/donate', async (req, res) => {
 });
 
 // Kick off a payment
-router.post('/initialize', protect, async (req, res) => {
+router.post('/initialize', protectOrSignup, async (req, res) => {
   const type = LEGACY_TYPE[req.body.payment_type] || req.body.payment_type;
+  const signup = req.user.scope === 'signup';
+  if (signup && !['id_card', 'bundle'].includes(type)) {
+    res.status(403).json({ message: 'Pay your ID card fee to finish registering.' });
+    return;
+  }
   if (!['dues', 'id_card', 'id_replacement', 'hoc_item', 'bundle'].includes(type)) {
     res.status(400).json({ message: 'Unsupported payment type.' });
     return;
@@ -177,7 +182,8 @@ router.post('/initialize', protect, async (req, res) => {
       amount,
       reference,
       full_name: req.user.name,
-      metadata: { account_type: req.user.account_type || 'student', userId: req.user.id, matric: req.user.matric, type },
+      redirectPath: signup ? '/register-id-card' : undefined,
+      metadata: { account_type: req.user.account_type || 'student', userId: req.user.id, matric: req.user.matric, type, email_on_file: !!req.user.email },
     });
 
     res.json({
@@ -208,7 +214,7 @@ const confirmAndRecord = async (reference, notify) => {
 };
 
 // Verify the payment
-router.get('/verify/:reference', protect, async (req, res) => {
+router.get('/verify/:reference', protectOrSignup, async (req, res) => {
   const { reference } = req.params;
 
   try {
@@ -258,7 +264,8 @@ router.post('/webhook', async (req, res) => {
       await confirmAndRecord(data.reference, async (verified) => {
         const customer = verified.customer || data.customer || {};
         const displayType = DISPLAY_TYPE[verified.metadata?.type || data.metadata?.type] || 'NACOS Payment';
-        if (customer.email) {
+        // No receipt email when the member has no email on file (Korapay was given a placeholder address).
+        if (customer.email && (verified.metadata?.email_on_file ?? data.metadata?.email_on_file) !== false) {
           emailService.sendPaymentReceipt(customer.email, customer.name || 'Student', {
             amount: verified.amount,
             reference: data.reference,

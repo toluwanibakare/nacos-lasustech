@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { API_BASE_URL, fetchApi } from "@/lib/api";
 import PhotoCropEditor from "@/components/PhotoCropEditor";
 import { PhotoCrop, defaultCrop } from "@/lib/photo-crop";
-import { shrinkToLimit } from "@/lib/image-shrink";
+import { checkImage as checkImageFile, shrinkToLimit } from "@/lib/image-shrink";
 
 interface IdCardRequest {
   id: number;
@@ -59,28 +59,6 @@ const readUser = (): StoredUser => {
     return {};
   }
 };
-
-const checkImage = (file: File): Promise<string | null> =>
-  new Promise((resolve) => {
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      return resolve("Photo must be a JPG, PNG or WEBP image.");
-    }
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(
-        Math.min(img.naturalWidth, img.naturalHeight) < MIN_SIDE
-          ? `Photo is too small. The shorter side must be at least ${MIN_SIDE}px.`
-          : null,
-      );
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve("That file could not be read as an image.");
-    };
-    img.src = url;
-  });
 
 const saveApplication = async (form: FormData) => {
   const token = localStorage.getItem("token");
@@ -177,7 +155,7 @@ const IdCardApplication = () => {
     if (!f) return;
     setPreparing(true);
     try {
-      const err = await checkImage(f);
+      const err = await checkImageFile(f, MIN_SIDE);
       setFileError(err);
       if (err) {
         toast({ title: "Photo not accepted", description: err, variant: "destructive" });

@@ -24,7 +24,11 @@ const rolePill = (s: Student) => {
     : p === "Assistant HOC" ? <Pill tone="blue">Asst. HOC</Pill>
     : isExecutive(s) ? <Pill tone="amber">{p}</Pill>
     : null;
-  if (!role) return <span className="text-xs text-muted-foreground">Student</span>;
+  if (!role) {
+    return s.account_status === "pending_payment"
+      ? <Pill tone="amber">Unpaid ID registration</Pill>
+      : <span className="text-xs text-muted-foreground">Student</span>;
+  }
   return (
     <span className="flex flex-wrap items-center gap-1.5">
       {role}
