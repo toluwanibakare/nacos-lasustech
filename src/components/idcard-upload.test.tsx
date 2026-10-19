@@ -24,7 +24,7 @@ afterEach(() => {
 });
 
 describe("ID card photo upload button", () => {
-  it("opens the photo picker straight away, and the guidelines tick is checked when saving", async () => {
+  it("needs the guidelines ticked first, then the tap lands on the real file input", async () => {
     localStorage.setItem("user", JSON.stringify({ name: "Ada Obi", account_type: "fresher", level: "100" }));
     (globalThis as any).fetch = vi.fn(async () => ({ ok: true, status: 200, json: async () => status }));
     render(
@@ -33,17 +33,23 @@ describe("ID card photo upload button", () => {
         <Toaster />
       </>,
     );
-    const chooser = await screen.findByText("Choose photo");
-    const label = chooser.closest("label") as HTMLLabelElement;
-    expect(label.getAttribute("for")).toBe("id-photo-input");
-    const input = document.getElementById("id-photo-input") as HTMLInputElement;
-    expect(input.type).toBe("file");
-    expect(input.disabled).toBe(false);
+    await screen.findByText("Choose photo");
 
-    // Not ticked, and the click still reaches the file input.
-    const clicks = vi.fn();
-    input.addEventListener("click", clicks);
-    fireEvent.click(label);
-    await waitFor(() => expect(clicks).toHaveBeenCalled());
+    // Not ticked: tapping explains why and there is no file input to open yet.
+    expect(document.querySelector('input[type="file"]')).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Choose photo" }));
+    await waitFor(() => expect(screen.getByText("Tick the box first")).toBeTruthy());
+
+    // Ticked: the invisible real file input covers the button.
+    fireEvent.click(screen.getByRole("checkbox"));
+    const input = (await waitFor(() => {
+      const el = document.querySelector('input[type="file"]');
+      expect(el).not.toBeNull();
+      return el;
+    })) as HTMLInputElement;
+    expect(input.disabled).toBe(false);
+    expect(input.accept).toContain("image/png");
+    expect(input.className).toContain("absolute");
+    expect(input.className).toContain("opacity-0");
   });
 });

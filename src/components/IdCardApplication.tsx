@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, CheckCircle2, ExternalLink, Info, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -110,13 +110,13 @@ const IdCardApplication = () => {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState(false);
   const [crop, setCrop] = useState<PhotoCrop>(defaultCrop());
   const [bloodGroup, setBloodGroup] = useState("");
   const [birthday, setBirthday] = useState("");
   const [emergency, setEmergency] = useState("");
   const [saving, setSaving] = useState(false);
   const [paying, setPaying] = useState(false);
-  const fileInput = useRef<HTMLInputElement>(null);
 
   const isFresher = user.account_type === "fresher";
 
@@ -183,23 +183,28 @@ const IdCardApplication = () => {
     const f = e.target.files?.[0];
     e.target.value = "";
     if (!f) return;
-    const err = await checkImage(f);
-    setFileError(err);
-    if (err) {
-      toast({ title: "Photo not accepted", description: err, variant: "destructive" });
-      return;
+    setPreparing(true);
+    try {
+      const err = await checkImage(f);
+      setFileError(err);
+      if (err) {
+        toast({ title: "Photo not accepted", description: err, variant: "destructive" });
+        return;
+      }
+      const ready = await shrinkToLimit(f, MAX_BYTES, MIN_SIDE);
+      if (!ready) {
+        const msg = "That photo is too large to use. Try a smaller photo or take a new one.";
+        setFileError(msg);
+        toast({ title: "Photo not accepted", description: msg, variant: "destructive" });
+        return;
+      }
+      if (ready !== f) toast({ title: "Photo resized", description: "Your photo was larger than 2MB, so it was reduced to fit." });
+      setFile(ready);
+      setPreviewUrl(URL.createObjectURL(ready));
+      setCrop(defaultCrop());
+    } finally {
+      setPreparing(false);
     }
-    const ready = await shrinkToLimit(f, MAX_BYTES, MIN_SIDE);
-    if (!ready) {
-      const msg = "That photo is too large to use. Try a smaller photo or take a new one.";
-      setFileError(msg);
-      toast({ title: "Photo not accepted", description: msg, variant: "destructive" });
-      return;
-    }
-    if (ready !== f) toast({ title: "Photo resized", description: "Your photo was larger than 2MB, so it was reduced to fit." });
-    setFile(ready);
-    setPreviewUrl(URL.createObjectURL(ready));
-    setCrop(defaultCrop());
   };
 
   const nameProps = {
@@ -355,12 +360,32 @@ const IdCardApplication = () => {
       </div>
 
       <div className="space-y-2">
-        <input id="id-photo-input" ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={onPickFile} />
-        <Button asChild variant="outline" className="h-11 cursor-pointer rounded-full px-5">
-          <label htmlFor="id-photo-input">
-            <Upload className="mr-2 h-4 w-4" /> {imageSrc ? "Change photo" : "Choose photo"}
-          </label>
-        </Button>
+        {/* The real file input sits on top of the button (invisible), so the tap lands on it directly. */}
+        <div className="relative inline-block">
+          <Button type="button" variant="outline" tabIndex={-1} aria-hidden="true" className="pointer-events-none h-11 rounded-full px-5">
+            {preparing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+            {preparing ? "Preparing photo..." : imageSrc ? "Change photo" : "Choose photo"}
+          </Button>
+          {acknowledged ? (
+            <input
+              id="id-photo-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              aria-label="Choose photo"
+              onChange={onPickFile}
+              disabled={preparing}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            />
+          ) : (
+            <button
+              type="button"
+              aria-label="Choose photo"
+              className="absolute inset-0 h-full w-full cursor-pointer rounded-full"
+              onClick={() => toast({ title: "Tick the box first", description: "Confirm you have read the photo guidelines, then choose your photo.", variant: "destructive" })}
+            />
+          )}
+        </div>
+        {!acknowledged && <p className="text-xs text-muted-foreground">Tick the box above first, then choose your photo.</p>}
         {fileError && <p className="text-sm text-destructive">{fileError}</p>}
       </div>
 
