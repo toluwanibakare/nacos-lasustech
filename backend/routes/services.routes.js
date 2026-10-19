@@ -14,11 +14,11 @@ const router = Router();
  * from the request body.
  */
 router.post('/id-card/application', protect, upload.single('image'), async (req, res) => {
-  const { photo_zoom, photo_cx, photo_cy, blood_group, birthday, emergency_contact } = req.body;
+  const { photo_zoom, photo_cx, photo_cy, birthday } = req.body;
 
   try {
     const form = new FormData();
-    Object.entries({ ...identityBody(req.user), photo_zoom, photo_cx, photo_cy, blood_group, birthday, emergency_contact }).forEach(
+    Object.entries({ ...identityBody(req.user), photo_zoom, photo_cx, photo_cy, birthday }).forEach(
       ([key, value]) => {
         if (value !== undefined && value !== null) form.append(key, String(value));
       },

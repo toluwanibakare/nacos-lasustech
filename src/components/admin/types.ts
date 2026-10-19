@@ -60,9 +60,7 @@ export interface IdRequest {
   account_type: "student" | "fresher";
   full_name: string;
   matric_number: string | null;
-  blood_group?: string | null;
   birthday?: string | null;
-  emergency_contact?: string | null;
   fee_amount: number | string | null;
   status: IdStatus | string;
   payment_reference?: string | null;

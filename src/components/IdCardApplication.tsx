@@ -5,7 +5,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE_URL, fetchApi } from "@/lib/api";
 import PhotoCropEditor from "@/components/PhotoCropEditor";
@@ -16,9 +15,7 @@ interface IdCardRequest {
   id: number;
   status: "awaiting_payment" | "pending" | "processing" | "ready" | "collected";
   fee_amount: number;
-  blood_group: string | null;
   birthday: string | null;
-  emergency_contact: string | null;
 }
 
 interface IdCardStatus {
@@ -42,7 +39,6 @@ interface StoredUser {
   post?: string;
 }
 
-const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 const MAX_BYTES = 2 * 1024 * 1024;
 const MIN_SIDE = 300;
 const STATUS_LABELS: Record<string, string> = {
@@ -112,9 +108,7 @@ const IdCardApplication = () => {
   const [fileError, setFileError] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [crop, setCrop] = useState<PhotoCrop>(defaultCrop());
-  const [bloodGroup, setBloodGroup] = useState("");
   const [birthday, setBirthday] = useState("");
-  const [emergency, setEmergency] = useState("");
   const [saving, setSaving] = useState(false);
   const [paying, setPaying] = useState(false);
 
@@ -129,9 +123,7 @@ const IdCardApplication = () => {
       setCrop(defaultCrop());
     }
     if (s.request) {
-      setBloodGroup(s.request.blood_group || "");
       setBirthday(s.request.birthday ? s.request.birthday.slice(0, 10) : "");
-      setEmergency(s.request.emergency_contact || "");
     }
   }, []);
 
@@ -217,10 +209,7 @@ const IdCardApplication = () => {
   const onSave = async () => {
     if (!imageSrc) return toast({ title: "Add a photo first", variant: "destructive" });
     if (!acknowledged) return toast({ title: "Tick the guidelines box", description: "Confirm you have read the photo guidelines, then save.", variant: "destructive" });
-    if (!bloodGroup || !birthday) return toast({ title: "Choose a blood group and enter your birthday", variant: "destructive" });
-    if (!/^0\d{10}$/.test(emergency)) {
-      return toast({ title: "Enter a valid 11-digit Nigerian phone number for your emergency contact", variant: "destructive" });
-    }
+    if (!birthday) return toast({ title: "Enter your birthday", variant: "destructive" });
     setSaving(true);
     try {
       const form = new FormData();
@@ -228,9 +217,7 @@ const IdCardApplication = () => {
       form.append("photo_zoom", String(crop.zoom));
       form.append("photo_cx", String(crop.cx));
       form.append("photo_cy", String(crop.cy));
-      form.append("blood_group", bloodGroup);
       form.append("birthday", birthday);
-      form.append("emergency_contact", emergency);
       await saveApplication(form);
       setFile(null);
       setPreviewUrl(null);
@@ -301,9 +288,7 @@ const IdCardApplication = () => {
           <PhotoCropEditor readOnly src={savedUrl} crop={crop} onChange={setCrop} {...nameProps} />
         )}
         <dl className="mx-auto grid max-w-sm grid-cols-2 gap-2 text-sm">
-          <dt className="text-muted-foreground">Blood group</dt><dd>{req.blood_group || "-"}</dd>
           <dt className="text-muted-foreground">Birthday</dt><dd>{req.birthday ? req.birthday.slice(0, 10) : "-"}</dd>
-          <dt className="text-muted-foreground">Emergency contact</dt><dd>{req.emergency_contact || "-"}</dd>
           <dt className="text-muted-foreground">Fee paid</dt><dd>₦{Number(req.fee_amount).toLocaleString()}</dd>
         </dl>
         {duesOwed && (
@@ -391,24 +376,9 @@ const IdCardApplication = () => {
 
       {imageSrc && <PhotoCropEditor src={imageSrc} crop={crop} onChange={setCrop} {...nameProps} />}
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="space-y-1.5">
-          <Label>Blood group</Label>
-          <Select value={bloodGroup} onValueChange={setBloodGroup}>
-            <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-            <SelectContent>
-              {BLOOD_GROUPS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="bday">Birthday</Label>
-          <Input id="bday" type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="emerg">Emergency contact</Label>
-          <Input id="emerg" type="tel" inputMode="numeric" maxLength={11} placeholder="08012345678" value={emergency} onChange={(e) => setEmergency(e.target.value.replace(/\D/g, ""))} />
-        </div>
+      <div className="max-w-xs space-y-1.5">
+        <Label htmlFor="bday">Birthday</Label>
+        <Input id="bday" type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
