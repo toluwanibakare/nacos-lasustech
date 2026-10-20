@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import FeedbackForm from "@/components/FeedbackForm";
 import { maskEmail } from "@/lib/mask-email";
+import { NewPasswordFields, passwordProblem } from "@/components/PasswordFields";
 import { studentPhotoUrl } from "@/lib/photo-url";
 import StudentAvatar from "@/components/StudentAvatar";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
@@ -1231,6 +1232,7 @@ const PasswordResetDialog = ({ matricNumber }: { matricNumber: string }) => {
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const { toast } = useToast();
@@ -1280,8 +1282,9 @@ const PasswordResetDialog = ({ matricNumber }: { matricNumber: string }) => {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 8) {
-      toast({ title: "Password too short", description: "Use at least 8 characters.", variant: "destructive" });
+    const problem = passwordProblem(newPassword, confirmNewPassword);
+    if (problem) {
+      toast({ title: "Check your new password", description: problem, variant: "destructive" });
       return;
     }
     setLoading(true);
@@ -1295,6 +1298,7 @@ const PasswordResetDialog = ({ matricNumber }: { matricNumber: string }) => {
       setStep("email");
       setOtp("");
       setNewPassword("");
+      setConfirmNewPassword("");
     } catch (err: any) {
       toast({ title: "Error", description: err.message || "Failed to reset password.", variant: "destructive" });
     } finally {
@@ -1394,20 +1398,7 @@ const PasswordResetDialog = ({ matricNumber }: { matricNumber: string }) => {
 
         {step === "password" && (
           <form onSubmit={handleResetPassword} className="mt-4 space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-foreground">New Password</label>
-              <Input 
-                type="password" 
-                placeholder="Enter new password" 
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                minLength={8}
-                autoFocus
-                className="rounded-xl border-border/50 bg-muted/30"
-              />
-              <p className="text-[10px] text-muted-foreground">At least 8 characters.</p>
-            </div>
+            <NewPasswordFields password={newPassword} confirm={confirmNewPassword} onPassword={setNewPassword} onConfirm={setConfirmNewPassword} autoFocus />
             <Button type="submit" className="w-full rounded-xl" disabled={loading}>
               {loading ? "Saving..." : "Save New Password"}
             </Button>

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { fetchApi } from "@/lib/api";
+import { NewPasswordFields, passwordProblem } from "@/components/PasswordFields";
 import {
   Dialog,
   DialogContent,
@@ -42,6 +43,7 @@ const LoginModal = ({ open, onClose, redirectTab }: LoginModalProps) => {
   const [forgotEmail, setForgotEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [mode, setModeState] = useState<LoginMode | null>(readMode);
 
@@ -124,6 +126,11 @@ const LoginModal = ({ open, onClose, redirectTab }: LoginModalProps) => {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    const problem = passwordProblem(newPassword, confirmNewPassword);
+    if (problem) {
+      toast({ title: "Check your new password", description: problem, variant: "destructive" });
+      return;
+    }
     setLoading(true);
     try {
       await fetchApi('/auth/reset-password', {
@@ -138,6 +145,7 @@ const LoginModal = ({ open, onClose, redirectTab }: LoginModalProps) => {
       setView("login");
       setOtp("");
       setNewPassword("");
+      setConfirmNewPassword("");
     } catch (error: any) {
       toast({ 
         title: "Reset failed", 
@@ -314,17 +322,7 @@ const LoginModal = ({ open, onClose, redirectTab }: LoginModalProps) => {
                 Check your <strong>Spam/Junk</strong> folder for the code.
               </p>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-foreground">New Password</label>
-              <Input
-                type="password"
-                placeholder="Enter new password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                className="rounded-xl border-border/50 bg-muted/30"
-              />
-            </div>
+            <NewPasswordFields password={newPassword} confirm={confirmNewPassword} onPassword={setNewPassword} onConfirm={setConfirmNewPassword} />
             <Button 
               type="submit" 
               className="w-full h-12 rounded-xl font-bold" 

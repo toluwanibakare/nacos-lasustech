@@ -1,3 +1,4 @@
+import { NewPasswordFields, passwordProblem } from "@/components/PasswordFields";
 import { useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
   const [confirm, setConfirm] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [resetConfirm, setResetConfirm] = useState("");
   const [cooldown, setCooldown] = useState(0);
 
   const [departments, setDepartments] = useState<string[]>([]);
@@ -223,8 +225,9 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 8) {
-      toast({ title: "Password too short", description: "Use at least 8 characters.", variant: "destructive" });
+    const problem = passwordProblem(newPassword, resetConfirm);
+    if (problem) {
+      toast({ title: "Check your new password", description: problem, variant: "destructive" });
       return;
     }
     setLoading(true);
@@ -233,6 +236,7 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
       toast({ title: "Password reset", description: "You can now sign in with your new password." });
       setOtp("");
       setNewPassword("");
+      setResetConfirm("");
       setPassword("");
       setView("signin");
     } catch (error) {
@@ -402,10 +406,7 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
             Enter the code sent to <span className="font-semibold text-foreground">{email}</span> and choose a new password.
           </p>
           {codeInput}
-          <div className="space-y-2">
-            <label className={labelClass}>New Password</label>
-            <PasswordField value={newPassword} onChange={setNewPassword} placeholder="At least 8 characters" autoComplete="new-password" />
-          </div>
+          <NewPasswordFields password={newPassword} confirm={resetConfirm} onPassword={setNewPassword} onConfirm={setResetConfirm} />
           <Button disabled={loading || otp.length !== 6} type="submit" className={primaryBtn}>
             {loading ? "Resetting..." : "Confirm Password Reset"}
           </Button>
