@@ -48,3 +48,9 @@ works from Render. Do not set `EMAIL_TRANSPORT`; set `SMTP_HOST=smtp-relay.brevo
 ## Local development
 Gmail works on your own computer (port 587 is not blocked there): keep `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587` and
 your Gmail app password in `backend/.env`, and do not set `EMAIL_TRANSPORT`.
+
+## Anonymous reply emails
+An anonymous sender can leave an email to get a reply. The backend encrypts it (AES-256-GCM) before it is stored, so the
+database and the admin screens only hold ciphertext; it is decrypted only to send the reply. Set `FEEDBACK_ENCRYPTION_KEY`
+in Render to a long random value (for example 40 random characters) and keep a copy somewhere safe. If it is not set the key
+is derived from `JWT_SECRET`. Either way, **changing that value later makes already stored addresses unreadable**, so set it once.

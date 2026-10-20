@@ -133,6 +133,10 @@ if ($action === 'submit_contact') {
     $kind = (string) ($in['kind'] ?? 'message');
     if (!in_array($kind, ['message', 'suggestion', 'complaint'], true)) $kind = 'message';
     $anonymous = !empty($in['is_anonymous']) ? 1 : 0;
+    if ($kind === 'message' && $anonymous) fail('A message needs your name and email. Use the suggestion or complaint box to stay anonymous.');
+    // An anonymous sender may leave an address to get a reply. The backend already encrypted it; only ciphertext is accepted.
+    $replyEnc = trim((string) ($in['reply_email_enc'] ?? ''));
+    if ($replyEnc !== '' && (!$anonymous || strpos($replyEnc, 'enc:v1:') !== 0 || strlen($replyEnc) > 1200)) $replyEnc = '';
     $message = trim((string) ($in['message'] ?? ''));
     if (mb_strlen($message) < 5) fail('Please write a little more.');
     if (mb_strlen($message) > 3000) fail('Please keep it under 3000 characters.');
@@ -145,13 +149,51 @@ if ($action === 'submit_contact') {
         $email = mb_substr(trim((string) ($in['email'] ?? '')), 0, 250);
         if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) fail('Your name and a valid email are required.');
     }
-    $pdo->prepare('INSERT INTO contact_messages (kind, is_anonymous, full_name, email, subject, message) VALUES (?, ?, ?, ?, ?, ?)')
-        ->execute([$kind, $anonymous, $name, $email, $subject !== '' ? $subject : null, $message]);
+    $pdo->prepare('INSERT INTO contact_messages (kind, is_anonymous, full_name, email, reply_email_enc, subject, message) VALUES (?, ?, ?, ?, ?, ?, ?)')
+        ->execute([$kind, $anonymous, $name, $email, $replyEnc !== '' ? $replyEnc : null, $subject !== '' ? $subject : null, $message]);
     json_out(['status' => 'success']);
 }
 
 if ($method === 'GET' && $action === 'get_messages') {
-    json_out($pdo->query('SELECT * FROM contact_messages ORDER BY id DESC')->fetchAll());
+    // The encrypted reply address is never sent to the admin screen; only whether one exists.
+    $rows = $pdo->query(
+        "SELECT id, kind, is_anonymous, full_name, email, subject, message, is_read, replied_at, created_at,
+                (reply_email_enc IS NOT NULL AND reply_email_enc <> '') AS has_reply_email
+         FROM contact_messages ORDER BY id DESC"
+    )->fetchAll();
+    $replies = [];
+    foreach ($pdo->query('SELECT id, message_id, reply_text, sent_by, created_at FROM contact_replies ORDER BY id ASC')->fetchAll() as $reply) {
+        $replies[(int) $reply['message_id']][] = $reply;
+    }
+    foreach ($rows as &$row) {
+        $row['replies'] = $replies[(int) $row['id']] ?? [];
+    }
+    unset($row);
+    json_out($rows);
+}
+
+// Everything the Node backend needs to send a reply (it decrypts the address; the admin screen never sees it).
+if ($method === 'GET' && $action === 'message_reply_target') {
+    $stmt = $pdo->prepare('SELECT id, kind, is_anonymous, full_name, email, reply_email_enc, subject, message FROM contact_messages WHERE id = ?');
+    $stmt->execute([(int) ($_GET['id'] ?? 0)]);
+    $row = $stmt->fetch();
+    if (!$row) fail('Message not found.', 404);
+    json_out($row);
+}
+
+if ($action === 'message_add_reply') {
+    need_post($method);
+    $in = input();
+    $id = (int) ($in['id'] ?? 0);
+    $text = trim((string) ($in['reply_text'] ?? ''));
+    if ($text === '' || mb_strlen($text) > 5000) fail('Write a reply (up to 5000 characters).');
+    $exists = $pdo->prepare('SELECT 1 FROM contact_messages WHERE id = ?');
+    $exists->execute([$id]);
+    if (!$exists->fetchColumn()) fail('Message not found.', 404);
+    $pdo->prepare('INSERT INTO contact_replies (message_id, reply_text, sent_by) VALUES (?, ?, ?)')
+        ->execute([$id, $text, mb_substr(trim((string) ($in['sent_by'] ?? '')), 0, 120) ?: null]);
+    $pdo->prepare('UPDATE contact_messages SET replied_at = NOW(), is_read = 1 WHERE id = ?')->execute([$id]);
+    json_out(['status' => 'success']);
 }
 
 if ($method === 'GET' && $action === 'get_fees') {

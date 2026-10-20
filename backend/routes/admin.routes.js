@@ -9,6 +9,7 @@ import { centralGet, centralPost, sendCentralError } from '../services/central.s
 import { audienceCounts, createCampaign, listCampaigns, sendCampaignBatch } from '../services/campaign.service.js';
 import isAdmin from '../middleware/admin.middleware.js';
 import emailService from '../services/email.service.js';
+import { decryptText } from '../services/crypto.service.js';
 import adminPermissions, { ADMIN_PAGES } from '../middleware/admin-permissions.middleware.js';
 import {
   addEventGalleryImage,
@@ -373,6 +374,46 @@ router.delete('/blogs/:id', async (req, res, next) => {
 router.get('/payments', async (_req, res) => {
   const payments = await safeRemoteGet('get_all_payments');
   res.json(Array.isArray(payments) ? payments : []);
+});
+
+// Reply to a message, suggestion or complaint by email. An anonymous sender's address is stored encrypted:
+// it is decrypted here only to send, and is never returned to the admin screen.
+router.post('/messages/:id/reply', async (req, res, next) => {
+  try {
+    const text = String(req.body?.reply || '').trim();
+    if (text.length < 2 || text.length > 5000) {
+      res.status(422).json({ message: 'Write a reply (up to 5000 characters).' });
+      return;
+    }
+    const target = await centralGet('message_reply_target', { id: req.params.id });
+    const anonymous = Number(target.is_anonymous) === 1;
+    const to = anonymous ? decryptText(target.reply_email_enc) : String(target.email || '').trim();
+    if (!to) {
+      res.status(422).json({
+        message: anonymous
+          ? 'This sender stayed anonymous and left no email, so there is nowhere to send a reply.'
+          : 'This message has no email address.',
+      });
+      return;
+    }
+    await emailService.sendMessageReply(to, anonymous ? 'Anonymous' : target.full_name, target, text);
+    await centralPost('message_add_reply', {
+      id: req.params.id,
+      reply_text: text,
+      sent_by: req.user?.admin_kind === 'super' ? 'Super admin' : (req.user?.name || req.user?.matric || 'Admin'),
+    });
+    res.json({ status: 'success' });
+  } catch (error) {
+    if (error.response?.data?.message) {
+      res.status(error.response.status < 500 ? error.response.status : 502).json({ message: error.response.data.message });
+      return;
+    }
+    if (error.code || /smtp|mail|ECONN|ETIMEDOUT/i.test(String(error.message))) {
+      res.status(502).json({ message: `The reply could not be emailed: ${emailService.friendlyMailError ? emailService.friendlyMailError(error) : error.message}` });
+      return;
+    }
+    next(error);
+  }
 });
 
 router.get('/messages', async (_req, res) => {

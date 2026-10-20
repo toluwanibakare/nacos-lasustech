@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import emailService from '../services/email.service.js';
 import { centralPost } from '../services/central.service.js';
+import { encryptText } from '../services/crypto.service.js';
 
 const router = Router();
 
@@ -20,6 +21,8 @@ router.post('/submit', async (req, res) => {
   const full_name = anonymous ? '' : String(req.body?.full_name || '').trim();
   const email = anonymous ? '' : String(req.body?.email || '').trim();
   const subject = String(req.body?.subject || '').trim().slice(0, 200);
+  // An anonymous sender may leave an email to get a reply. It is encrypted here, before it is stored.
+  const replyEmail = anonymous ? String(req.body?.reply_email || '').trim().toLowerCase() : '';
 
   if (message.length < 5) {
     return res.status(400).json({ message: 'Please write a little more.' });
@@ -27,12 +30,21 @@ router.post('/submit', async (req, res) => {
   if (message.length > 3000) {
     return res.status(400).json({ message: 'Please keep it under 3000 characters.' });
   }
+  if (kind === 'message' && anonymous) {
+    return res.status(400).json({ message: 'A message needs your name and email. Use the suggestion or complaint box to stay anonymous.' });
+  }
   if (!anonymous && (!full_name || !email)) {
     return res.status(400).json({ message: 'Please fill in all required fields!' });
   }
+  if (replyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(replyEmail)) {
+    return res.status(400).json({ message: 'Enter a valid email address, or leave it empty.' });
+  }
 
   try {
-    await centralPost('submit_contact', { kind, is_anonymous: anonymous, full_name, email, subject, message });
+    await centralPost('submit_contact', {
+      kind, is_anonymous: anonymous, full_name, email, subject, message,
+      reply_email_enc: replyEmail ? encryptText(replyEmail) : '',
+    });
   } catch (err) {
     // Say so: the sender must know it was not saved (nobody can follow up an anonymous note).
     console.error('Contact store error:', err.response?.data?.message || err.message);

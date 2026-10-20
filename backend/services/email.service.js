@@ -141,6 +141,35 @@ export const sendContactConfirmation = async (userEmail, userName) => {
 };
 
 /**
+ * A reply from the executives to a message, suggestion or complaint.
+ */
+export const sendMessageReply = async (to, name, original, replyText) => {
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const label = { message: 'message', suggestion: 'suggestion', complaint: 'complaint' }[original.kind] || 'message';
+  const greeting = name && name !== 'Anonymous' ? `Hello ${name},` : 'Hello,';
+  const quoted = String(original.message || '').slice(0, 600);
+  const mailOptions = {
+    from: mailFrom(`${APP_NAME}`),
+    to,
+    subject: `Our reply to your ${label} - NACOS LASUSTECH`,
+    replyTo: process.env.ADMIN_EMAIL || undefined,
+    text: `${greeting}\n\n${replyText}\n\n---\nYour ${label}:\n${quoted}\n\nThe NACOS Executive Council`,
+    html: `
+      ${emailHeader}
+      <h2 style="color: #1e293b; margin-top: 0;">${esc(greeting)}</h2>
+      <p style="color: #475569; line-height: 1.6;">Thank you for your ${label}. Here is our reply:</p>
+      <div style="margin: 20px 0; padding: 16px 20px; background-color: #f0fdf4; border-left: 4px solid ${PRIMARY_COLOR}; border-radius: 4px; white-space: pre-wrap; color: #1e293b; line-height: 1.6;">${esc(replyText)}</div>
+      <p style="color: #94a3b8; font-size: 12px; margin-bottom: 4px;">Your ${label}:</p>
+      <div style="padding: 12px 16px; background-color: #f8fafc; border-radius: 4px; white-space: pre-wrap; color: #64748b; font-size: 13px;">${esc(quoted)}</div>
+      <p style="color: #475569; line-height: 1.6;">Best regards,<br><strong>The NACOS Executive Council</strong></p>
+      ${emailFooter}
+    `,
+  };
+
+  return mailer.sendMail(mailOptions);
+};
+
+/**
  * Send Contact Form Notification to Admin
  */
 export const sendContactNotificationToAdmin = async (contactData) => {
@@ -395,6 +424,7 @@ export const mailSettingsSummary = () => ({
 export default {
   sendContactConfirmation,
   sendContactNotificationToAdmin,
+  sendMessageReply,
   sendPaymentReceipt,
   sendPaymentNotificationToAdmin,
   sendPasswordReset,

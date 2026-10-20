@@ -170,6 +170,9 @@ export interface ContactMessage {
   id: number | string;
   kind?: "message" | "suggestion" | "complaint";
   is_anonymous?: number | boolean | string;
+  has_reply_email?: number | boolean | string;
+  replied_at?: string | null;
+  replies?: { id: number | string; reply_text: string; sent_by?: string | null; created_at?: string }[];
   full_name?: string;
   email?: string;
   subject?: string;

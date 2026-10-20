@@ -25,7 +25,9 @@ describe("FeedbackForm", () => {
     mockFetch();
     render(<FeedbackForm defaultKind="suggestion" />);
     expect(screen.queryByPlaceholderText("Your full name")).toBeNull();
-    expect(screen.queryByPlaceholderText("you@example.com")).toBeNull();
+    // The only email box left is the optional reply address, not the sender's own email.
+    expect(screen.queryByText("Email Address")).toBeNull();
+    expect(screen.getByText(/Want a reply\? Leave an email \(optional\)/i)).toBeTruthy();
     fireEvent.change(screen.getByPlaceholderText(/start, stop or improve/i), { target: { value: "Open the lab on weekends" } });
     fireEvent.click(screen.getByRole("button", { name: /send suggestion/i }));
     await waitFor(() => expect(sent).not.toBeNull());
@@ -51,5 +53,36 @@ describe("FeedbackForm", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Complaint" }));
     expect(screen.queryByPlaceholderText("Your full name")).toBeNull();
     expect(screen.getByRole("button", { name: /send complaint/i })).toBeTruthy();
+  });
+});
+
+describe("FeedbackForm reply email", () => {
+  it("a message has no anonymous switch; suggestions and complaints can leave an encrypted reply email", async () => {
+    mockFetch();
+    render(<FeedbackForm />);
+    // Message tab: name and email, no anonymity.
+    expect(screen.queryByLabelText("Send anonymously")).toBeNull();
+    expect(screen.getByPlaceholderText("Your full name")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Suggestion" }));
+    expect(screen.getByLabelText("Send anonymously")).toBeTruthy();
+    expect(screen.getByText(/encrypted before it is stored/i)).toBeTruthy();
+    fireEvent.change(screen.getByPlaceholderText(/start, stop or improve/i), { target: { value: "Open the lab on weekends" } });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), { target: { value: " me@example.com " } });
+    fireEvent.click(screen.getByRole("button", { name: /send suggestion/i }));
+    await waitFor(() => expect(sent).not.toBeNull());
+    expect(sent!.body).toMatchObject({ kind: "suggestion", is_anonymous: true, full_name: "", email: "", reply_email: "me@example.com" });
+  });
+
+  it("a named sender never sends a separate reply email", async () => {
+    mockFetch();
+    render(<FeedbackForm defaultKind="complaint" />);
+    fireEvent.click(screen.getByLabelText("Send anonymously"));
+    fireEvent.change(screen.getByPlaceholderText("Your full name"), { target: { value: "Ada Obi" } });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), { target: { value: "ada@example.com" } });
+    fireEvent.change(screen.getByPlaceholderText(/What went wrong/i), { target: { value: "The hall fan is broken" } });
+    fireEvent.click(screen.getByRole("button", { name: /send complaint/i }));
+    await waitFor(() => expect(sent).not.toBeNull());
+    expect(sent!.body).toMatchObject({ is_anonymous: false, full_name: "Ada Obi", email: "ada@example.com", reply_email: "" });
   });
 });

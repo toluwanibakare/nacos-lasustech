@@ -25,9 +25,12 @@ const FeedbackForm = ({ defaultKind = "message", className = "" }: Props) => {
   const { toast } = useToast();
   const [kind, setKind] = useState<FeedbackKind>(defaultKind);
   const [anonymous, setAnonymous] = useState(defaultKind !== "message");
-  const [form, setForm] = useState({ name: "", email: "", message: "" });
+  const [form, setForm] = useState({ name: "", email: "", message: "", replyEmail: "" });
   const [busy, setBusy] = useState(false);
   const current = KINDS.find((k) => k.id === kind)!;
+
+  // A message always carries the sender's name and email; only suggestions and complaints can be anonymous.
+  const canBeAnonymous = kind !== "message";
 
   const pick = (next: FeedbackKind) => {
     setKind(next);
@@ -47,6 +50,7 @@ const FeedbackForm = ({ defaultKind = "message", className = "" }: Props) => {
           is_anonymous: anonymous,
           full_name: anonymous ? "" : form.name,
           email: anonymous ? "" : form.email,
+          reply_email: anonymous ? form.replyEmail.trim() : "",
           subject: `${current.label} from the website`,
           message: form.message,
         }),
@@ -57,7 +61,7 @@ const FeedbackForm = ({ defaultKind = "message", className = "" }: Props) => {
           ? result?.message || "Thank you. Your note was sent without your name."
           : `${result?.message || "Thank you."} Please check your inbox and spam folder for a confirmation.`,
       });
-      setForm({ name: "", email: "", message: "" });
+      setForm({ name: "", email: "", message: "", replyEmail: "" });
     } catch (err) {
       toast({
         title: "Not sent",
@@ -88,6 +92,7 @@ const FeedbackForm = ({ defaultKind = "message", className = "" }: Props) => {
         ))}
       </div>
 
+      {canBeAnonymous && (
       <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-muted/40 p-3">
         <Switch checked={anonymous} onCheckedChange={setAnonymous} aria-label="Send anonymously" className="mt-0.5" />
         <span className="text-xs leading-5 text-muted-foreground">
@@ -95,10 +100,28 @@ const FeedbackForm = ({ defaultKind = "message", className = "" }: Props) => {
             <EyeOff className="h-3.5 w-3.5" /> Send anonymously
           </span>
           {anonymous
-            ? "Your name, email and account are not sent or saved with this. We cannot reply to you."
+            ? "Your name and account are not sent or saved with this. We can only reply if you leave an email below."
             : "Turn on to hide who you are. Otherwise we will see your name and email and can reply."}
         </span>
       </label>
+      )}
+
+      {canBeAnonymous && anonymous && (
+        <div>
+          <label className="text-xs font-medium text-foreground">Want a reply? Leave an email (optional)</label>
+          <Input
+            type="email"
+            value={form.replyEmail}
+            onChange={(e) => setForm({ ...form, replyEmail: e.target.value })}
+            className="mt-1"
+            placeholder="you@example.com"
+            autoComplete="off"
+          />
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            Your email is encrypted before it is stored. The executives cannot read it, and it is only used to send you our reply. Your name stays hidden.
+          </p>
+        </div>
+      )}
 
       {!anonymous && (
         <>
