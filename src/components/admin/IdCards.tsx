@@ -24,11 +24,11 @@ const STATUS_TONE: Record<string, "amber" | "blue" | "green" | "slate"> = {
 const EDITABLE = ["pending", "processing", "ready", "collected"];
 
 const truthy = (v: unknown) => v === true || v === 1 || v === "1";
-// Dues and the ID card go together: a card is only printed once dues are paid (or the person is exempt).
+// Dues are shown as a reminder only; they do not stop a card being generated.
 const duesOk = (r: IdRequest) => truthy(r.dues_paid) || truthy(r.dues_exempt);
 // The ID card fee must be paid too: an unpaid request is still "awaiting_payment".
 const cardPaid = (r: IdRequest) => r.status !== "awaiting_payment";
-const canGenerate = (r: IdRequest) => Boolean(r.has_matric) && r.student_id != null && duesOk(r) && cardPaid(r);
+const canGenerate = (r: IdRequest) => Boolean(r.has_matric) && r.student_id != null && cardPaid(r);
 
 const IdCards = () => {
   const { data, loading, error, reload } = useAdminData<IdRequest[]>("/admin/id-requests", []);
@@ -84,7 +84,7 @@ const IdCards = () => {
       downloadBlob(blob, filename);
       setSelected(new Set());
       await reload();
-      if (skippedCount > 0) throw new Error(`Generated, but ${skippedCount} skipped because their ID card fee or dues are unpaid: ${skippedNames}`);
+      if (skippedCount > 0) throw new Error(`Generated, but ${skippedCount} skipped because their ID card fee is unpaid: ${skippedNames}`);
     }, `Generated ${picked.length} card${picked.length === 1 ? "" : "s"}.`);
 
   return (
@@ -109,7 +109,7 @@ const IdCards = () => {
 
         {withoutMatric > 0 && (
           <p className="mt-3 rounded-2xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            {withoutMatric} listed request{withoutMatric === 1 ? " cannot" : "s cannot"} be selected yet: the ID card fee or dues are unpaid, or there is no matric number (freshers get a card once a matric number is assigned in the Freshers section).
+            {withoutMatric} listed request{withoutMatric === 1 ? " cannot" : "s cannot"} be selected yet: the ID card fee is unpaid, or there is no matric number (freshers get a card once a matric number is assigned in the Freshers section).
           </p>
         )}
 
@@ -136,7 +136,7 @@ const IdCards = () => {
                 {rows.map((r) => (
                   <tr key={r.id}>
                     <Td>
-                      <input type="checkbox" aria-label={`Select ${r.full_name}`} disabled={!canGenerate(r)} title={canGenerate(r) ? "" : !cardPaid(r) ? "ID card fee not paid yet" : !duesOk(r) ? "Dues not paid yet" : "No matric number yet"} checked={selected.has(key(r))} onChange={() => toggle(r)} />
+                      <input type="checkbox" aria-label={`Select ${r.full_name}`} disabled={!canGenerate(r)} title={canGenerate(r) ? "" : !cardPaid(r) ? "ID card fee not paid yet" : "No matric number yet"} checked={selected.has(key(r))} onChange={() => toggle(r)} />
                     </Td>
                     <Td className="font-semibold">{r.full_name}</Td>
                     <Td><Pill tone={r.account_type === "fresher" ? "blue" : "green"}>{r.account_type === "fresher" ? "Fresher" : "Stalite"}</Pill></Td>
