@@ -10,6 +10,7 @@ export type SectionKey =
   | "events"
   | "blogs"
   | "messages"
+  | "birthdays"
   | "admins";
 
 export interface Student {

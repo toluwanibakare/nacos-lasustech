@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import {
-  BarChart3, BookOpen, Calendar, CreditCard, GraduationCap, IdCard, LogOut, Mail, Menu, MessageSquare, Settings, ShieldCheck, Sparkles, UserCog, Users,
+  BarChart3, BookOpen, Cake, Calendar, CreditCard, GraduationCap, IdCard, LogOut, Mail, Menu, MessageSquare, Settings, ShieldCheck, Sparkles, UserCog, Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -20,6 +20,7 @@ export const NAV: { id: SectionKey; label: string; icon: typeof Users }[] = [
   { id: "events", label: "Events", icon: Calendar },
   { id: "blogs", label: "Blogs", icon: BookOpen },
   { id: "messages", label: "Messages", icon: MessageSquare },
+  { id: "birthdays", label: "Birthdays", icon: Cake },
   { id: "admins", label: "Admins", icon: UserCog },
 ];
 

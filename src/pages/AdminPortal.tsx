@@ -19,6 +19,7 @@ const sections: Record<SectionKey, React.LazyExoticComponent<() => JSX.Element>>
   events: lazy(() => import("@/components/admin/Events")),
   blogs: lazy(() => import("@/components/admin/Blogs")),
   messages: lazy(() => import("@/components/admin/Messages")),
+  birthdays: lazy(() => import("@/components/admin/Birthdays")),
   admins: lazy(() => import("@/components/admin/Admins")),
 };
 
@@ -28,7 +29,7 @@ const ALL_SECTIONS = Object.keys(sections) as SectionKey[];
 const allowedSections = (user: AdminUser | null): SectionKey[] => {
   if (!user) return [];
   if (user.super) return ALL_SECTIONS;
-  return ALL_SECTIONS.filter((key) => key !== "overview" && key !== "admins" && (user.permissions || []).includes(key));
+  return ALL_SECTIONS.filter((key) => key !== "overview" && key !== "admins" && key !== "birthdays" && (user.permissions || []).includes(key));
 };
 
 const readSession = (): AdminUser | null => {

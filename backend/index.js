@@ -101,8 +101,8 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-// Vercel Cron Job endpoint, called daily at 07:00 UTC
-// Configured in vercel.json: "0 7 * * *"
+// Vercel Cron Job endpoint, called at 06:00 and 19:00 UTC (07:00 and 20:00 Lagos)
+// Configured in vercel.json; the service decides which reminders are due and sends each only once
 app.get('/api/cron/birthday', async (req, res) => {
   // Secure the cron endpoint so only Vercel can call it
   const cronSecret = req.headers['authorization'];

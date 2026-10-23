@@ -19,6 +19,9 @@ import {
   deleteEventGalleryImage,
   deleteExecutive,
   getAcademicSettings,
+  getBirthdaySettings,
+  listBirthdays,
+  updateBirthdaySettings,
   getFees,
   updateFees,
   getAdminSummary,
@@ -164,6 +167,36 @@ router.delete('/students/flags/:id', async (req, res, next) => {
     await clearStudentFlag(req.params.id);
     res.json({ status: 'success' });
   } catch (error) {
+    next(error);
+  }
+});
+
+// Super admin only: 'birthdays' is not a page a sub-admin can be given.
+router.get('/birthdays', async (_req, res, next) => {
+  try {
+    res.json(await getBirthdaySettings());
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/birthdays/list', async (_req, res, next) => {
+  try {
+    res.json(await listBirthdays());
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put('/birthdays', async (req, res, next) => {
+  try {
+    const recipients = Array.isArray(req.body.recipients) ? req.body.recipients.map(String) : [];
+    res.json(await updateBirthdaySettings(recipients));
+  } catch (error) {
+    if (error.response?.data?.message || error.response?.data?.error) {
+      res.status(422).json({ message: error.response.data.message || error.response.data.error });
+      return;
+    }
     next(error);
   }
 });

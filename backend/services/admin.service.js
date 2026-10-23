@@ -396,6 +396,12 @@ export const updateAcademicSettings = async ({ session, semester, welcomeMessage
   return getAcademicSettings();
 };
 
+export const getBirthdaySettings = async () => centralGet('get_birthday_settings');
+
+export const listBirthdays = async () => centralGet('birthdays_list');
+
+export const updateBirthdaySettings = async (recipients) => centralPost('update_birthday_settings', { recipients });
+
 export const getFees = async () => {
   const fees = await centralGet('get_fees');
   return {

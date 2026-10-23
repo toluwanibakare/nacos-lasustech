@@ -34,6 +34,7 @@ const IdCards = () => {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [type, setType] = useState("");
+  const [department, setDepartment] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const q = useDebouncedValue(search.trim().toLowerCase());
 
@@ -42,10 +43,14 @@ const IdCards = () => {
       data.filter((r) => {
         if (status && r.status !== status) return false;
         if (type && r.account_type !== type) return false;
+        if (department && r.department !== department) return false;
         return !q || `${r.full_name} ${r.matric_number || ""}`.toLowerCase().includes(q);
       }),
-    [data, q, status, type],
+    [data, q, status, type, department],
   );
+
+  // Taken from the requests themselves, so it works for any admin who can open this page.
+  const departments = useMemo(() => Array.from(new Set(data.map((r) => r.department).filter(Boolean) as string[])).sort(), [data]);
 
   const selectable = rows.filter(canGenerate);
   const withoutMatric = rows.length - selectable.length;
@@ -95,6 +100,7 @@ const IdCards = () => {
           <SearchInput value={search} onChange={setSearch} placeholder="Search name or matric" />
           <SelectField label="Status" value={status} onChange={setStatus} options={[{ value: "", label: "All statuses" }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))]} />
           <SelectField label="Account type" value={type} onChange={setType} options={[{ value: "", label: "Stalites and freshers" }, { value: "student", label: "Stalites" }, { value: "fresher", label: "Freshers" }]} />
+          <SelectField label="Department" value={department} onChange={setDepartment} options={[{ value: "", label: "All departments" }, ...departments.map((d) => ({ value: d, label: d }))]} />
         </FilterBar>
 
         {withoutMatric > 0 && (
@@ -114,6 +120,7 @@ const IdCards = () => {
                   <Th>Name</Th>
                   <Th>Type</Th>
                   <Th>Matric</Th>
+                  <Th>Department</Th>
                   <Th>Level</Th>
                   <Th>Fee charged</Th>
                   <Th>Status</Th>
@@ -130,6 +137,7 @@ const IdCards = () => {
                     <Td className="font-semibold">{r.full_name}</Td>
                     <Td><Pill tone={r.account_type === "fresher" ? "blue" : "green"}>{r.account_type === "fresher" ? "Fresher" : "Stalite"}</Pill></Td>
                     <Td className="text-xs">{r.matric_number || (r.has_matric ? "-" : "None yet")}</Td>
+                    <Td className="text-xs">{r.department || "-"}</Td>
                     <Td>{levelLabel(r.level)}</Td>
                     <Td>{formatNaira(r.fee_amount)}</Td>
                     <Td>

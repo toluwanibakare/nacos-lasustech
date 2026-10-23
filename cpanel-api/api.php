@@ -294,11 +294,10 @@ if ($action === 'login') {
     }
 
     $password = (string) ($in['password'] ?? '');
-    $ok = false;
     if (!empty($student['password'])) {
+        // Once a password is set it is the only one that works; the first-name default is gone for good.
         $ok = password_verify($password, $student['password']);
-    }
-    if (!$ok) {
+    } else {
         // Legacy first-login convention: password = first name word of the record.
         $first = strtolower(explode(' ', trim($student['full_name']))[0]);
         $ok = $password !== '' && strtolower($password) === $first;
@@ -921,6 +920,75 @@ if ($method === 'GET' && $action === 'get_birthdays') {
     )->fetchAll();
     foreach ($rows as &$r) $r['is_today'] = (bool) $r['is_today'];
     json_out(['students' => $rows]);
+}
+
+// Admin Birthdays page: members with a birthday in the current month (Lagos date), with days until each one.
+if ($method === 'GET' && $action === 'birthdays_list') {
+    $tz = new DateTimeZone('Africa/Lagos');
+    $today = new DateTimeImmutable('today', $tz);
+    $rows = $pdo->prepare(
+        "SELECT full_name, level, whatsapp_number, birthday FROM students
+         WHERE birthday IS NOT NULL AND birthday <> '0000-00-00' AND level <> 'alumni' AND MONTH(birthday) = ?
+         ORDER BY DAY(birthday), full_name"
+    );
+    $rows->execute([(int) $today->format('n')]);
+    $people = [];
+    foreach ($rows->fetchAll() as $r) {
+        $day = (int) date('j', strtotime($r['birthday']));
+        $thisYear = DateTimeImmutable::createFromFormat('!Y-n-j', $today->format('Y') . '-' . $today->format('n') . '-' . $day, $tz);
+        if (!$thisYear) continue; // 29 Feb in a non-leap year
+        $r['day'] = $day;
+        $r['days_until'] = (int) $today->diff($thisYear)->format('%r%a');
+        $people[] = $r;
+    }
+    json_out(['month' => $today->format('F'), 'people' => $people]);
+}
+
+// Who gets the birthday emails, and a once-only claim per reminder so a restart or a second cron call never repeats one.
+if ($method === 'GET' && $action === 'get_birthday_settings') {
+    $stmt = $pdo->prepare("SELECT setting_value FROM site_settings WHERE setting_key = 'birthday_recipients'");
+    $stmt->execute();
+    $raw = (string) ($stmt->fetchColumn() ?: '');
+    json_out(['recipients' => array_values(array_filter(array_map('trim', explode(',', $raw))))]);
+}
+
+if ($action === 'update_birthday_settings') {
+    need_post($method);
+    $in = input();
+    $list = is_array($in['recipients'] ?? null) ? $in['recipients'] : [];
+    $emails = [];
+    foreach ($list as $email) {
+        $email = strtolower(trim((string) $email));
+        if ($email === '') continue;
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) fail('"' . $email . '" is not a valid email address.');
+        $emails[$email] = true;
+    }
+    if (count($emails) > 10) fail('Add at most 10 email addresses.');
+    $pdo->prepare(
+        'INSERT INTO site_settings (setting_key, setting_value, setting_group) VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)'
+    )->execute(['birthday_recipients', implode(',', array_keys($emails)), 'birthday']);
+    json_out(['recipients' => array_keys($emails)]);
+}
+
+if ($action === 'birthday_claim') {
+    need_post($method);
+    $in = input();
+    $slot = (string) ($in['slot'] ?? '');
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}_(morning|night)_(today|tomorrow)$/', $slot)) fail('Invalid slot.');
+    $stmt = $pdo->prepare("INSERT IGNORE INTO site_settings (setting_key, setting_value, setting_group) VALUES (?, '1', 'birthday_log')");
+    $stmt->execute(['birthday_sent_' . $slot]);
+    // Reminders older than a week are of no use; keep the table tidy.
+    $pdo->exec("DELETE FROM site_settings WHERE setting_group = 'birthday_log' AND setting_key < 'birthday_sent_" . date('Y-m-d', time() - 7 * 86400) . "'");
+    json_out(['claimed' => $stmt->rowCount() === 1]);
+}
+
+if ($action === 'birthday_unclaim') {
+    need_post($method);
+    $in = input();
+    $pdo->prepare("DELETE FROM site_settings WHERE setting_group = 'birthday_log' AND setting_key = ?")
+        ->execute(['birthday_sent_' . (string) ($in['slot'] ?? '')]);
+    json_out(['status' => 'success']);
 }
 
 // ─── Admin: roles and student fields ─────────────────────────────────────────
