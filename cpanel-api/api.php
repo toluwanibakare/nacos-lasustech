@@ -853,10 +853,13 @@ if ($action === 'generate_cards') {
     $students = $stmt->fetchAll();
     if (!$students) fail('No eligible students (a matric number is required).');
 
-    // Dues and the ID card go together: a card is only printed once dues are paid (or the person is exempt).
+    // A card is only printed once the ID card fee is paid and dues are paid (or the person is exempt from dues).
+    // Nobody gets a card from us unprompted: no paid request, no card.
     $skipped = [];
-    $students = array_values(array_filter($students, static function ($st) use ($pdo, &$skipped) {
-        if (dues_cleared($pdo, 'student_id', (int) $st['id'], $st['post'] ?? null)) return true;
+    $cardPaid = $pdo->prepare("SELECT 1 FROM id_card_requests WHERE student_id = ? AND status <> 'awaiting_payment' ORDER BY id DESC LIMIT 1");
+    $students = array_values(array_filter($students, static function ($st) use ($pdo, $cardPaid, &$skipped) {
+        $cardPaid->execute([$st['id']]);
+        if ($cardPaid->fetchColumn() && dues_cleared($pdo, 'student_id', (int) $st['id'], $st['post'] ?? null)) return true;
         $skipped[] = $st['full_name'];
         return false;
     }));
@@ -864,7 +867,7 @@ if ($action === 'generate_cards') {
         header('X-Skipped-Count: ' . count($skipped));
         header('X-Skipped-Names: ' . rawurlencode(implode(', ', array_slice($skipped, 0, 30))));
     }
-    if (!$students) fail('None of the selected students have paid their dues, so no cards were generated. Unpaid: ' . implode(', ', array_slice($skipped, 0, 10)) . '.', 409);
+    if (!$students) fail('None of the selected students have paid for their ID card and dues, so no cards were generated. Unpaid: ' . implode(', ', array_slice($skipped, 0, 10)) . '.', 409);
 
     $template = @imagecreatefrompng(__DIR__ . '/assets/Id_card_design.png');
     $fonts = card_fonts(__DIR__);
