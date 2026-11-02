@@ -147,7 +147,7 @@ describe("a flagged member's ID card page", () => {
 describe("fresher level and matric number", () => {
   it("registration asks for 100 level or 200 level (direct entry) and sends it", async () => {
     const calls = mockFetch({
-      "/content/settings": () => ({ departments: ["Computer Science"] }),
+      "/content/settings": () => ({ departments: ["Computer Science", "Cyber Security"], de_departments: ["Computer Science"] }),
       "/fresher/register": () => ({ status: "success" }),
     });
     render(<MemoryRouter><FresherRegistration onLoggedIn={() => {}} onSwitchToStalite={() => {}} /><Toaster /></MemoryRouter>);
@@ -171,6 +171,9 @@ describe("fresher level and matric number", () => {
     expect(calls.some((c) => c.url.endsWith("/fresher/register"))).toBe(false);
 
     fireEvent.change(levelSelect, { target: { value: "200" } });
+    // Direct entry only offers the open departments.
+    expect(Array.from(deptSelect.options).map((o) => o.value)).toEqual(["", "Computer Science"]);
+    expect(screen.getByText(/open for Computer Science only/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
     await waitFor(() => {
       const post = calls.find((c) => c.url.endsWith("/fresher/register"));

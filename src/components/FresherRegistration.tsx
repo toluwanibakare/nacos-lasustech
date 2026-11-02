@@ -72,6 +72,8 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
   const [cooldown, setCooldown] = useState(0);
 
   const [departments, setDepartments] = useState<string[]>([]);
+  // Direct entry (200 level) registration is open to these departments only.
+  const [deDepartments, setDeDepartments] = useState<string[]>([]);
   const [deptState, setDeptState] = useState<"idle" | "loading" | "failed" | "ready">("idle");
 
   useEffect(() => {
@@ -86,6 +88,7 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
       const data = await fetchApi("/content/settings");
       const list: string[] = Array.isArray(data?.departments) ? data.departments : [];
       setDepartments(list);
+      setDeDepartments(Array.isArray(data?.de_departments) ? data.de_departments : []);
       setDeptState(list.length > 0 ? "ready" : "failed");
     } catch {
       setDeptState("failed");
@@ -353,7 +356,7 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
                 className="flex h-10 w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">Select department</option>
-                {departments.map((d) => (
+                {(level === "200" ? departments.filter((d) => deDepartments.includes(d)) : departments).map((d) => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>
@@ -363,7 +366,11 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
             <label className={labelClass}>Level</label>
             <select
               value={level}
-              onChange={(e) => setLevel(e.target.value)}
+              onChange={(e) => {
+                setLevel(e.target.value);
+                // A department picked earlier may not be open to direct entry.
+                if (e.target.value === "200" && !deDepartments.includes(department)) setDepartment("");
+              }}
               required
               className="flex h-10 w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
@@ -371,6 +378,9 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
               <option value="100">100 Level (new student)</option>
               <option value="200">200 Level (direct entry)</option>
             </select>
+            {level === "200" && deDepartments.length > 0 && (
+              <p className="text-xs text-muted-foreground">Direct entry registration is open for {deDepartments.join(", ")} only.</p>
+            )}
           </div>
           <div className="space-y-2">
             <label className={labelClass}>Password</label>

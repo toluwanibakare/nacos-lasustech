@@ -84,6 +84,13 @@ function id_card_fee(PDO $pdo, string $accountType): float
     return (float) setting($pdo, $key, $accountType === 'fresher' ? '1500' : '1000');
 }
 
+/** Departments open to direct entry (200 level) registration. Setting de_departments, a comma separated list. */
+function de_departments(PDO $pdo): array
+{
+    $list = array_values(array_filter(array_map('trim', explode(',', setting($pdo, 'de_departments', 'Computer Science')))));
+    return array_values(array_intersect($list ?: ['Computer Science'], allowed_departments($pdo)));
+}
+
 /** What a flagged ID card pays instead of the normal card fee. */
 function id_flag_fee(PDO $pdo): float
 {

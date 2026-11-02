@@ -206,6 +206,7 @@ if ($method === 'GET' && $action === 'get_fees') {
         'dues' => (float) setting($pdo, 'fee_dues', '2000'),
         'id_flag' => id_flag_fee($pdo),
         'departments' => allowed_departments($pdo),
+        'de_departments' => de_departments($pdo),
         'welcome_message' => setting($pdo, 'welcome_message', ''),
         'community_link' => setting($pdo, 'whatsapp_community_link', ''),
         'class_links' => [
@@ -435,7 +436,7 @@ if ($action === 'stalite_register') {
 
     $existing = find_student_by_matric($pdo, $matric);
     if ($existing && ($existing['account_status'] ?? 'active') !== 'pending_payment') {
-        fail('This matric number already has an account. Sign in instead (your default password is your first name in lowercase), or use Forgot Password.', 409);
+        fail('This matric number already has an account. Sign in instead (your default password is your surname in lowercase), or use Forgot Password.', 409);
     }
 
     $image = store_photo($_FILES['image'], $matric);
@@ -490,6 +491,9 @@ if ($action === 'fresher_register') {
     // 100 = new student, 200 = direct entry. Anything else is refused rather than guessed.
     $level = (string) ($in['level'] ?? '100');
     if (!in_array($level, ['100', '200'], true)) fail('Select 100 level or 200 level (direct entry).');
+    if ($level === '200' && !in_array($dept, de_departments($pdo), true)) {
+        fail('Direct entry registration is open for ' . implode(', ', de_departments($pdo)) . ' only.');
+    }
 
     $existing = find_fresher($pdo, null, $email);
     $otp = new_otp();

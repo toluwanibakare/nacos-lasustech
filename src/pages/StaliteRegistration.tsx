@@ -306,7 +306,7 @@ const StaliteRegistration = () => {
               ) : (
                 <div className="rounded-3xl border border-green-200 bg-green-50/60 p-6">
                   <p className="flex items-center gap-2 text-base font-bold text-green-800"><CheckCircle2 className="h-5 w-5" /> {confirmed === null && !readToken() ? "Payment received" : "Payment confirmed"}</p>
-                  <p className="mt-2 text-sm leading-relaxed text-green-900">Your account is ready. Sign in with your matric number. Your first password is your first name in lowercase.</p>
+                  <p className="mt-2 text-sm leading-relaxed text-green-900">Your account is ready. Sign in with your matric number. Your first password is your surname in lowercase.</p>
                   <div className="mt-4 flex gap-2 rounded-2xl bg-white/70 p-3 text-xs text-green-900">
                     <Info className="mt-0.5 h-4 w-4 shrink-0" /> After you sign in, you will be asked to update your profile (email, WhatsApp number and a new password), like every other student.
                   </div>

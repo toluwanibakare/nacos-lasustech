@@ -250,7 +250,7 @@ const LoginModal = ({ open, onClose, redirectTab }: LoginModalProps) => {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              <p className="text-[10px] text-muted-foreground ml-1">Default password is your first name in lowercase</p>
+              <p className="text-[10px] text-muted-foreground ml-1">Default password is your surname in lowercase</p>
             </div>
             
             <Button disabled={loading} type="submit" className="w-full h-12 rounded-xl font-bold shadow-lg shadow-primary/20 transition-all active:scale-[0.98]">
