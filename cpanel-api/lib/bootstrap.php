@@ -84,6 +84,12 @@ function id_card_fee(PDO $pdo, string $accountType): float
     return (float) setting($pdo, $key, $accountType === 'fresher' ? '1500' : '1000');
 }
 
+/** What a flagged ID card pays instead of the normal card fee. */
+function id_flag_fee(PDO $pdo): float
+{
+    return (float) setting($pdo, 'fee_id_flag', '2000');
+}
+
 function find_student_by_matric(PDO $pdo, string $matric): ?array
 {
     $stmt = $pdo->prepare('SELECT * FROM students WHERE matric_no = ? LIMIT 1');

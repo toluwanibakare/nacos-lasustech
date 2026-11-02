@@ -23,6 +23,7 @@ import StudentAvatar from "@/components/StudentAvatar";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import { downloadReceipt, fetchReceipt, fetchReceiptStatus, ReceiptStatus } from "@/lib/receipt";
 import IdCardApplication from "@/components/IdCardApplication";
+import FresherMatricCard from "@/components/FresherMatricCard";
 import HocPanel from "@/components/HocPanel";
 import MaterialsPanel from "@/components/MaterialsPanel";
 
@@ -73,6 +74,8 @@ interface PaymentRow {
 interface IdCardInfo {
   request?: { status?: string } | null;
   card_issuable?: boolean;
+  flagged?: boolean;
+  flag_reason?: string | null;
 }
 
 interface DashData {
@@ -90,7 +93,8 @@ const hasPaidDues = (payments: PaymentRow[], session?: string) =>
 const deriveIdCardStatus = (idCard: IdCardInfo | null | undefined, matric: string, fresher: boolean): string => {
   const status = idCard?.request?.status;
   if (!status) return "Not Registered";
-  if (fresher && !matric && status !== 'awaiting_payment') return "Paid: card issued after matric assignment";
+  if (idCard?.flagged) return "Flagged: pay for a new card";
+  if (fresher && !matric && status !== 'awaiting_payment') return "Paid: update your matric number to get your card";
   switch (status) {
     case 'awaiting_payment': return "Awaiting payment";
     case 'pending':
@@ -155,6 +159,8 @@ const Dashboard = () => {
   const [activities, setActivities] = useState<any[]>([]);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [adminNotice, setAdminNotice] = useState<any>(null);
+  // An ID card flag locks the rest of the portal until the new card fee is paid.
+  const [idFlag, setIdFlag] = useState<{ reason: string } | null>(null);
   const [academicSettings, setAcademicSettings] = useState<AcademicSettings>({ session: "", semester: "", welcomeMessage: "" });
   const [welcomeHidden, setWelcomeHidden] = useState(false);
   const [hocPost, setHocPost] = useState<string | null>(null);
@@ -231,6 +237,7 @@ const Dashboard = () => {
     };
 
     setAdminNotice(dash?.adminNotice || null);
+    setIdFlag(dash?.idCard?.flagged ? { reason: String(dash.idCard.flag_reason || "") } : null);
     setAcademicSettings(acad);
     setFees(feeInfo);
     setPayments(payList);
@@ -386,11 +393,15 @@ const Dashboard = () => {
 
   // Fall back to Overview if the saved tab is not available for this account
   useEffect(() => {
+    if (idFlag) {
+      setActiveTab("idcard");
+      return;
+    }
     if (activeTab === "profile" && isFresher) setActiveTab("overview");
     if (activeTab === "hoc" && hocChecked && !hocPost) setActiveTab("overview");
-  }, [activeTab, hocChecked, hocPost, isFresher]);
+  }, [activeTab, hocChecked, hocPost, isFresher, idFlag]);
 
-  const navItems: NavItem[] = [
+  const allNavItems: NavItem[] = [
     { id: "overview", label: "Overview", short: "Home", icon: LayoutDashboard },
     ...(isFresher ? [] : [{ id: "profile" as DashTab, label: "My Profile", short: "Profile", icon: User }]),
     { id: "dues", label: "Dues & Fees", short: "Dues", icon: CreditCard },
@@ -398,6 +409,7 @@ const Dashboard = () => {
     { id: "materials", label: "Course Materials", short: "Materials", icon: BookOpen },
     ...(hocPost ? [{ id: "hoc" as DashTab, label: hocPost, short: hocPost, icon: Users }] : []),
   ];
+  const navItems: NavItem[] = idFlag ? allNavItems.filter((item) => item.id === "idcard") : allNavItems;
 
   const isProfileIncomplete = !isFresher && (!profile.fullName || !profile.matricNumber || !profile.level || !profile.birthday);
 
@@ -691,6 +703,19 @@ const Dashboard = () => {
           ref={mainScrollRef}
           className="flex-1 px-6 py-8 md:px-10 md:py-12 pb-24 lg:pb-12 h-screen overflow-y-auto"
         >
+          {idFlag && (
+            <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-900">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                </div>
+                <p className="text-sm font-bold">Your account has been flagged</p>
+              </div>
+              {idFlag.reason && <p className="text-sm leading-6 text-red-800">Reason: {idFlag.reason}</p>}
+              <p className="text-sm leading-6 text-red-800">The rest of your portal is locked until you pay for a new ID card. Correct your application below, then pay the fee. A new card will be generated for you.</p>
+            </div>
+          )}
+
           {/* Incomplete Profile Warning */}
           {adminNotice && (
             <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-900">
@@ -766,12 +791,16 @@ const Dashboard = () => {
                 </p>
               </div>
 
+              {isFresher && !profile.matricNumber && <FresherMatricCard level={profile.level || "100"} />}
+
               {(() => {
                 // The community for everyone, plus the class group for the member's own level (freshers are 100 level).
-                const classLink = fees?.class_links?.[isFresher ? "100" : profile.level] || "";
+                // A fresher is 100 level, or 200 level when they registered as direct entry.
+                const classLevel = profile.level || (isFresher ? "100" : "");
+                const classLink = fees?.class_links?.[classLevel] || "";
                 const groups = [
                   { key: "community", title: "Join the NACOS community", text: "Announcements, events and updates for every NACOS member.", button: "Join the community", href: fees?.community_link || "" },
-                  { key: "class", title: `Join your class group${isFresher || profile.level ? ` (${isFresher ? "100" : profile.level} Level)` : ""}`, text: "Course updates and notes from your class, shared by your HOC.", button: "Join your class group", href: classLink },
+                  { key: "class", title: `Join your class group${classLevel ? ` (${classLevel} Level)` : ""}`, text: "Course updates and notes from your class, shared by your HOC.", button: "Join your class group", href: classLink },
                 ].filter((g) => g.href);
                 if (groups.length === 0) return null;
                 return (

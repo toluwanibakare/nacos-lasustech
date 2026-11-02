@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
-import { Download } from "lucide-react";
+import { Download, Flag, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { adminDownload, adminFetch } from "@/lib/admin-api";
 import { IdRequest } from "./types";
 import { AsyncBody, Card, FilterBar, PageHeader, Pill, SearchInput, SelectField, TableWrap, Td, Th } from "./shared";
@@ -11,7 +13,7 @@ const STATUS_LABEL: Record<string, string> = {
   awaiting_payment: "Awaiting payment",
   pending: "Paid, pending",
   processing: "Processing",
-  ready: "Ready",
+  ready: "Printed",
   collected: "Collected",
 };
 const STATUS_TONE: Record<string, "amber" | "blue" | "green" | "slate"> = {
@@ -25,10 +27,13 @@ const EDITABLE = ["pending", "processing", "ready", "collected"];
 
 const truthy = (v: unknown) => v === true || v === 1 || v === "1";
 // Dues are shown as a reminder only; they do not stop a card being generated.
+const isFlagged = (r: IdRequest) => truthy(r.flagged);
 const duesOk = (r: IdRequest) => truthy(r.dues_paid) || truthy(r.dues_exempt);
 // The ID card fee must be paid too: an unpaid request is still "awaiting_payment".
 const cardPaid = (r: IdRequest) => r.status !== "awaiting_payment";
-const canGenerate = (r: IdRequest) => Boolean(r.has_matric) && r.student_id != null && cardPaid(r);
+const canGenerate = (r: IdRequest) => Boolean(r.has_matric) && r.student_id != null && cardPaid(r) && !isFlagged(r);
+// A card can be marked printed once it is paid for and in the queue.
+const canPrint = (r: IdRequest) => r.status === "pending" || r.status === "processing";
 
 const IdCards = () => {
   const { data, loading, error, reload } = useAdminData<IdRequest[]>("/admin/id-requests", []);
@@ -56,10 +61,13 @@ const IdCards = () => {
   // Taken from the requests themselves, so it works for any admin who can open this page.
   const departments = useMemo(() => Array.from(new Set(data.map((r) => r.department).filter(Boolean) as string[])).sort(), [data]);
 
-  const selectable = rows.filter(canGenerate);
-  const withoutMatric = rows.length - selectable.length;
+  // Anyone who is not flagged can be ticked; each button then acts on the ticked people it applies to.
+  const selectable = rows.filter((r) => !isFlagged(r));
+  const withoutMatric = rows.filter((r) => !isFlagged(r) && !canGenerate(r)).length;
   const key = (r: IdRequest) => String(r.id);
-  const picked = data.filter((r) => selected.has(key(r)) && canGenerate(r));
+  const ticked = data.filter((r) => selected.has(key(r)) && !isFlagged(r));
+  const picked = ticked.filter(canGenerate);
+  const toPrint = ticked.filter(canPrint);
 
   const toggle = (r: IdRequest) =>
     setSelected((prev) => {
@@ -75,7 +83,41 @@ const IdCards = () => {
     run(async () => {
       await adminFetch(`/admin/id-requests/${r.id}/status`, { method: "PUT", body: JSON.stringify({ status: next }) });
       await reload();
-    }, `${r.full_name}: ${STATUS_LABEL[next] || next}.`);
+    }, next === "ready" ? `${r.full_name}: printed. They are being emailed that the card is ready.` : `${r.full_name}: ${STATUS_LABEL[next] || next}.`);
+
+  // Marks every ticked card as printed. Each person is emailed that their card is ready for pickup.
+  const markPrinted = async () => {
+    const ids = toPrint.map((r) => r.id);
+    const ok = await run(async () => {
+      const result = await adminFetch("/admin/id-requests/status", { method: "POST", body: JSON.stringify({ ids, status: "ready" }) });
+      setSelected(new Set());
+      await reload();
+      if (result.noEmail > 0) throw new Error(`Marked as printed, and ${result.emailed} emailed. ${result.noEmail} have no email on file, so tell them to collect their card.`);
+    }, `Marked ${ids.length} as printed. They are being emailed that their card is ready.`);
+    return ok;
+  };
+
+  const [flagOpen, setFlagOpen] = useState(false);
+  const [flagReason, setFlagReason] = useState("");
+  const flagNow = async () => {
+    const ids = ticked.map((r) => r.id);
+    const ok = await run(async () => {
+      const result = await adminFetch("/admin/id-requests/flag", { method: "POST", body: JSON.stringify({ ids, reason: flagReason.trim() }) });
+      setSelected(new Set());
+      await reload();
+      if (result.noEmail > 0) throw new Error(`Flagged ${result.flagged}. ${result.noEmail} have no email on file, so tell them yourself.`);
+    }, `Flagged ${ids.length}. They are being emailed and must pay the new card fee.`);
+    if (ok) {
+      setFlagOpen(false);
+      setFlagReason("");
+    }
+  };
+
+  const unflag = (r: IdRequest) =>
+    run(async () => {
+      await adminFetch("/admin/id-requests/unflag", { method: "POST", body: JSON.stringify({ ids: [r.id] }) });
+      await reload();
+    }, `${r.full_name}: flag removed.`);
 
   const generate = () =>
     run(async () => {
@@ -91,12 +133,22 @@ const IdCards = () => {
     <div className="space-y-5">
       <PageHeader
         title="ID cards"
-        description="Review requests, update their status and generate printable cards."
+        description="Tick people, generate their cards (they move to Processing), then mark them Printed to email them."
         actions={
-          <Button className="rounded-full" disabled={busy || picked.length === 0} onClick={generate}>
-            <Download className="mr-2 h-4 w-4" />
-            Generate cards{picked.length ? ` (${picked.length})` : ""}
-          </Button>
+          <>
+            <Button className="rounded-full" disabled={busy || picked.length === 0} onClick={generate}>
+              <Download className="mr-2 h-4 w-4" />
+              Generate cards{picked.length ? ` (${picked.length})` : ""}
+            </Button>
+            <Button variant="outline" className="rounded-full" disabled={busy || toPrint.length === 0} onClick={markPrinted}>
+              <Printer className="mr-2 h-4 w-4" />
+              Mark as printed{toPrint.length ? ` (${toPrint.length})` : ""}
+            </Button>
+            <Button variant="outline" className="rounded-full border-red-300 text-red-700 hover:bg-red-50" disabled={busy || ticked.length === 0} onClick={() => setFlagOpen(true)}>
+              <Flag className="mr-2 h-4 w-4" />
+              Flag{ticked.length ? ` (${ticked.length})` : ""}
+            </Button>
+          </>
         }
       />
       <Card>
@@ -109,7 +161,7 @@ const IdCards = () => {
 
         {withoutMatric > 0 && (
           <p className="mt-3 rounded-2xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            {withoutMatric} listed request{withoutMatric === 1 ? " cannot" : "s cannot"} be selected yet: the ID card fee is unpaid, or there is no matric number (freshers get a card once a matric number is assigned in the Freshers section).
+            {withoutMatric} listed request{withoutMatric === 1 ? " cannot" : "s cannot"} have a card generated yet: the ID card fee is unpaid, or there is no matric number (freshers get a card once they update their matric number).
           </p>
         )}
 
@@ -136,7 +188,7 @@ const IdCards = () => {
                 {rows.map((r) => (
                   <tr key={r.id}>
                     <Td>
-                      <input type="checkbox" aria-label={`Select ${r.full_name}`} disabled={!canGenerate(r)} title={canGenerate(r) ? "" : !cardPaid(r) ? "ID card fee not paid yet" : "No matric number yet"} checked={selected.has(key(r))} onChange={() => toggle(r)} />
+                      <input type="checkbox" aria-label={`Select ${r.full_name}`} disabled={isFlagged(r)} title={isFlagged(r) ? "Flagged: waiting for the new card fee" : ""} checked={selected.has(key(r))} onChange={() => toggle(r)} />
                     </Td>
                     <Td className="font-semibold">{r.full_name}</Td>
                     <Td><Pill tone={r.account_type === "fresher" ? "blue" : "green"}>{r.account_type === "fresher" ? "Fresher" : "Stalite"}</Pill></Td>
@@ -146,10 +198,17 @@ const IdCards = () => {
                     <Td>{formatNaira(r.fee_amount)}</Td>
                     <Td>
                       <Pill tone={STATUS_TONE[r.status] || "slate"}>{STATUS_LABEL[r.status] || r.status}</Pill>
+                      {isFlagged(r) && <div className="mt-1"><Pill tone="red">Flagged</Pill></div>}
                       {!duesOk(r) && <div className="mt-1"><Pill tone="red">Dues unpaid</Pill></div>}
                     </Td>
                     <Td className="text-xs">{formatDate(r.created_at)}</Td>
                     <Td>
+                      {isFlagged(r) ? (
+                        <div className="space-y-1 text-xs">
+                          <p className="max-w-[14rem] text-red-700">{r.flag_reason}</p>
+                          <Button size="sm" variant="outline" className="h-7 rounded-full px-3 text-xs" disabled={busy} onClick={() => unflag(r)}>Remove flag</Button>
+                        </div>
+                      ) : (
                       <SelectField
                         label="Change status"
                         className="h-8 text-xs"
@@ -161,6 +220,7 @@ const IdCards = () => {
                             : [{ value: "", label: "Unpaid" }]
                         }
                       />
+                      )}
                     </Td>
                   </tr>
                 ))}
@@ -169,6 +229,22 @@ const IdCards = () => {
           </AsyncBody>
         </div>
       </Card>
+
+      <Dialog open={flagOpen} onOpenChange={(o) => !busy && setFlagOpen(o)}>
+        <DialogContent className="rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>Flag {ticked.length} ID card{ticked.length === 1 ? "" : "s"}</DialogTitle>
+            <DialogDescription>
+              Each person is emailed, cannot use their portal, and must pay the flagged ID card fee for a new card. Their old card is voided and they can correct their application.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea className="rounded-2xl" rows={3} maxLength={255} placeholder="Reason (they see this), for example: photo does not follow the ID card rules" value={flagReason} onChange={(e) => setFlagReason(e.target.value)} />
+          <DialogFooter>
+            <Button variant="outline" className="rounded-full" disabled={busy} onClick={() => setFlagOpen(false)}>Cancel</Button>
+            <Button className="rounded-full bg-red-600 hover:bg-red-700" disabled={busy || flagReason.trim().length < 3} onClick={flagNow}>Flag and email</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

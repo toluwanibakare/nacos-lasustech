@@ -165,6 +165,7 @@ app.use('/api/fresher/reset-password', ...failedAttempts('email'));
 app.use('/api/fresher/forgot-password', emailsPerAccount('email'));
 app.use('/api/fresher/resend', emailsPerAccount('email'));
 app.use('/api/fresher/register', emailsPerAccount('email'));
+app.use('/api/fresher/matric', ipBackstop(30, 60 * 60 * 1000));
 app.use('/api/fresher', ipBackstop(300), fresherRoutes);
 app.use('/api/stalite-signup', ipBackstop(40, 60 * 60 * 1000), staliteSignupRoutes);
 app.use('/api/hoc', hocRoutes);

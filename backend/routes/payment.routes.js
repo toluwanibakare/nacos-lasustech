@@ -2,7 +2,7 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import { ipBackstop } from '../middleware/rate-limits.js';
 import KorapayService from '../services/korapay.service.js';
-import protect, { protectOrSignup } from '../middleware/auth.middleware.js';
+import protect, { protectOrSignup, clearFlagCache } from '../middleware/auth.middleware.js';
 import emailService from '../services/email.service.js';
 import { centralGet, centralPost, identityBody, identityParams, sendCentralError } from '../services/central.service.js';
 
@@ -26,6 +26,7 @@ const DISPLAY_TYPE = {
   id_replacement: 'ID Card Replacement',
   hoc_item: 'Course Material',
   bundle: 'Session Dues and ID Card',
+  id_flag: 'ID Card (New Card After Flag)',
 };
 
 const LEGACY_TYPE = { nacos_dues: 'dues' };
@@ -66,7 +67,7 @@ router.post('/initialize', protectOrSignup, async (req, res) => {
     res.status(403).json({ message: 'Pay your ID card fee to finish registering.' });
     return;
   }
-  if (!['dues', 'id_card', 'id_replacement', 'hoc_item', 'bundle'].includes(type)) {
+  if (!['dues', 'id_card', 'id_replacement', 'hoc_item', 'bundle', 'id_flag'].includes(type)) {
     res.status(400).json({ message: 'Unsupported payment type.' });
     return;
   }
@@ -74,10 +75,23 @@ router.post('/initialize', protectOrSignup, async (req, res) => {
   try {
     const [fees, payments] = await Promise.all([centralGet('get_fees'), centralGet('payments', identityParams(req.user))]);
 
+    // A flagged ID card has one way forward: pay the flag fee. Nothing else can be paid until then.
+    const flagStatus = signup ? null : await centralGet('id_flag_status', identityParams(req.user));
+    if (flagStatus?.flagged && type !== 'id_flag') {
+      res.status(403).json({ message: 'Your ID card was flagged. Pay the new ID card fee first.', code: 'ID_FLAGGED' });
+      return;
+    }
+
     let amount;
     let hocItemId = null;
     let bundle = null;
-    if (type === 'bundle') {
+    if (type === 'id_flag') {
+      if (!flagStatus?.flagged) {
+        res.status(409).json({ message: 'Your ID card is not flagged.' });
+        return;
+      }
+      amount = Number(fees.id_flag);
+    } else if (type === 'bundle') {
       // Dues and the ID card fee in one charge (still recorded as two payments).
       if (req.user.account_type !== 'fresher') {
         const me = await centralGet('hoc_profile', { matric: req.user.matric });
@@ -142,11 +156,13 @@ router.post('/initialize', protectOrSignup, async (req, res) => {
         res.status(400).json({ message: 'This material is free. Download it from your Course Materials.' });
         return;
       }
-      // Freshers are 100L; students' level and department come from the database, not the token.
+      // Level and department come from the database, not the token. A fresher is 100 level, or 200 level for direct entry.
       let level = '100';
       let department = null;
       if (req.user.account_type === 'fresher') {
-        department = (await centralGet('fresher_profile', { fresher_id: req.user.id })).profile.department;
+        const { profile } = await centralGet('fresher_profile', { fresher_id: req.user.id });
+        department = profile.department;
+        level = profile.level;
       } else {
         const me = await centralGet('hoc_profile', { matric: req.user.matric });
         level = me.level;
@@ -209,6 +225,7 @@ const confirmAndRecord = async (reference, notify) => {
   if (!isKorapaySuccess(verification)) return { verification, recorded: false };
 
   const result = await centralPost('log_payment_success', { reference, amount: verification.data.amount });
+  clearFlagCache(); // paying a flag fee unlocks the portal straight away
   if (!result.already) await notify(verification.data);
   return { verification, recorded: true };
 };

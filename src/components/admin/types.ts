@@ -45,6 +45,7 @@ export interface Fresher {
   full_name: string;
   email: string;
   department: string | null;
+  level?: "100" | "200" | string;
   whatsapp_number?: string | null;
   email_verified?: number | boolean | null;
   status: "pending_verification" | "active" | "promoted" | "disabled" | string;
@@ -74,6 +75,8 @@ export interface IdRequest {
   has_matric: number | boolean | null;
   dues_exempt?: number | boolean | string | null;
   dues_paid?: number | boolean | string | null;
+  flagged?: number | boolean | string | null;
+  flag_reason?: string | null;
 }
 
 export interface Payment {
@@ -106,6 +109,7 @@ export interface FeeSettings {
   idCardStalite: number;
   idCardFresher: number;
   dues: number;
+  idFlag: number;
   departments: string[];
 }
 

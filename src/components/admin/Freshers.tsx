@@ -47,7 +47,7 @@ const Freshers = () => {
     setBusy(true);
     try {
       await adminFetch(`/admin/freshers/${target.id}/matric`, { method: "POST", body: JSON.stringify({ matric_no: matric.trim() }) });
-      toast({ title: "Matric number assigned", description: `${target.full_name} is now a 100L student (${matric.trim()}).` });
+      toast({ title: "Matric number assigned", description: `${target.full_name} is now a ${target.level === "200" ? "200 level (direct entry)" : "100 level"} student (${matric.trim()}).` });
       setTarget(null);
       reload();
     } catch (err) {
@@ -57,9 +57,31 @@ const Freshers = () => {
     }
   };
 
+  const waiting = data.filter((f) => !f.matric_no && f.status !== "promoted" && f.status !== "disabled" && Number(f.email_verified) === 1).length;
+
+  const remind = async () => {
+    setBusy(true);
+    try {
+      const result = await adminFetch("/admin/freshers/remind-matric", { method: "POST", body: JSON.stringify({}) });
+      toast({ title: "Reminders on their way", description: `${result.emailed} of ${result.total} freshers are being emailed to update their matric number.` });
+    } catch (err) {
+      toast({ title: "Could not send reminders", description: err instanceof Error ? err.message : "Try again.", variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
-      <PageHeader title="Freshers" description="New 100L students who registered without a matric number." />
+      <PageHeader
+        title="Freshers"
+        description="New students (100 level) and direct entry students (200 level) who registered without a matric number. They can update their matric number themselves."
+        actions={
+          <Button className="rounded-full" disabled={busy || waiting === 0} onClick={remind}>
+            Email freshers to update matric{waiting ? ` (${waiting})` : ""}
+          </Button>
+        }
+      />
       <Card>
         <FilterBar>
           <SearchInput value={search} onChange={setSearch} placeholder="Search name, email or matric" />
@@ -73,6 +95,7 @@ const Freshers = () => {
                   <Th>Name</Th>
                   <Th>Email</Th>
                   <Th>Department</Th>
+                  <Th>Level</Th>
                   <Th>Status</Th>
                   <Th>Matric</Th>
                   <Th>Registered</Th>
@@ -87,6 +110,7 @@ const Freshers = () => {
                       <Td className="font-semibold">{f.full_name}</Td>
                       <Td className="text-xs">{f.email}</Td>
                       <Td className="text-xs">{f.department || "-"}</Td>
+                      <Td className="text-xs">{f.level === "200" ? "200 (direct entry)" : "100"}</Td>
                       <Td><Pill tone={s.tone}>{s.label}</Pill></Td>
                       <Td className="text-xs">{f.matric_no || "-"}</Td>
                       <Td className="text-xs">{formatDate(f.created_at)}</Td>
@@ -111,7 +135,7 @@ const Freshers = () => {
           <DialogHeader>
             <DialogTitle>Assign matric number</DialogTitle>
             <DialogDescription>
-              {target?.full_name} will become a 100L student with this matric number and can then get an ID card.
+              {target?.full_name} will become a {target?.level === "200" ? "200 level (direct entry)" : "100 level"} student with this matric number and can then get an ID card.
             </DialogDescription>
           </DialogHeader>
           <Input className="rounded-full" placeholder="Matric number" value={matric} onChange={(e) => setMatric(e.target.value)} autoFocus />

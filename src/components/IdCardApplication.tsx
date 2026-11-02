@@ -30,6 +30,9 @@ interface IdCardStatus {
   dues_exempt?: boolean;
   dues_cleared?: boolean;
   dues_fee?: number;
+  flagged?: boolean;
+  flag_reason?: string | null;
+  flag_fee?: number;
 }
 
 interface StoredUser {
@@ -208,7 +211,7 @@ const IdCardApplication = () => {
     }
   };
 
-  const onPay = async (type: "id_card" | "bundle" = "id_card") => {
+  const onPay = async (type: "id_card" | "bundle" | "id_flag" = "id_card") => {
     setPaying(true);
     try {
       const data = await fetchApi("/payments/initialize", {
@@ -291,12 +294,23 @@ const IdCardApplication = () => {
   const hasSaved = !!req;
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">{paid ? "Edit your ID card application" : "Apply for your ID card"}</h2>
+      <h2 className="text-xl font-semibold">{paid ? "Edit your ID card application" : status.flagged ? "Your ID card was flagged" : "Apply for your ID card"}</h2>
+
+      {status.flagged && (
+        <div className="flex gap-2 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="space-y-1">
+            <p className="font-semibold">Your portal is locked until you pay for a new ID card.</p>
+            {status.flag_reason && <p>Reason: {status.flag_reason}</p>}
+            <p>Correct your photo and details below following the guidelines, save, then pay ₦{Number(status.flag_fee ?? status.fee).toLocaleString()}. A new card will be generated for you.</p>
+          </div>
+        </div>
+      )}
 
       {isFresher && (
         <div className="flex gap-2 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
           <Info className="mt-0.5 h-4 w-4 shrink-0" />
-          You can pay and arrange your photo now. Your card is printed after your matric number is assigned.
+          You can pay and arrange your photo now. Your card is printed after you update your matric number on your dashboard.
         </div>
       )}
 
@@ -367,7 +381,17 @@ const IdCardApplication = () => {
         )}
       </div>
 
-      {hasSaved && req?.status === "awaiting_payment" && (
+      {hasSaved && status.flagged && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 p-4">
+          <div className="flex items-center gap-2 text-sm text-red-900">
+            <CheckCircle2 className="h-4 w-4" /> Saved. Pay the new ID card fee to unlock your portal.
+          </div>
+          <Button className="rounded-full" onClick={() => onPay("id_flag")} disabled={paying || saving}>
+            {paying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Pay new ID card ₦{Number(status.flag_fee ?? status.fee).toLocaleString()}
+          </Button>
+        </div>
+      )}
+      {hasSaved && !status.flagged && req?.status === "awaiting_payment" && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-green-200 bg-green-50 p-4">
           <div className="flex items-center gap-2 text-sm text-green-900">
             <CheckCircle2 className="h-4 w-4" /> Application saved. Pay the ID card fee to continue.
@@ -384,7 +408,7 @@ const IdCardApplication = () => {
           </div>
         </div>
       )}
-      {hasSaved && req?.status === "awaiting_payment" && duesOwed && (
+      {hasSaved && !status.flagged && req?.status === "awaiting_payment" && duesOwed && (
         <p className="text-xs text-muted-foreground">Dues and the ID card go together. You can pay them separately, but your card is printed and your receipts are released once both are paid.</p>
       )}
       {!hasSaved && (

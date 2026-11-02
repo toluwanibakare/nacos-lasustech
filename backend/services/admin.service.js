@@ -409,15 +409,17 @@ export const getFees = async () => {
     idCardStalite: fees.id_card_stalite,
     idCardFresher: fees.id_card_fresher,
     dues: fees.dues,
+    idFlag: fees.id_flag,
     departments: fees.departments,
   };
 };
 
-export const updateFees = async ({ idCardStalite, idCardFresher, dues }) => {
+export const updateFees = async ({ idCardStalite, idCardFresher, dues, idFlag }) => {
   await centralPost('set_fees', {
     ...(idCardStalite !== undefined ? { id_card_stalite: idCardStalite } : {}),
     ...(idCardFresher !== undefined ? { id_card_fresher: idCardFresher } : {}),
     ...(dues !== undefined ? { dues } : {}),
+    ...(idFlag !== undefined ? { id_flag: idFlag } : {}),
   });
   return getFees();
 };

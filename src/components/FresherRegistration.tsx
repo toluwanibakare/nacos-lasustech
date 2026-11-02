@@ -63,6 +63,7 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [department, setDepartment] = useState("");
+  const [level, setLevel] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [otp, setOtp] = useState("");
@@ -144,6 +145,10 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
       toast({ title: "Choose a department", description: "Select your department to continue.", variant: "destructive" });
       return;
     }
+    if (!level) {
+      toast({ title: "Choose your level", description: "Select 100 level, or 200 level if you are a direct entry student.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     try {
       await post("/fresher/register", {
@@ -151,6 +156,7 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
         email: email.trim(),
         password,
         department,
+        level,
       });
       toast({ title: "Account created", description: "We emailed you a 6-digit code. Check your spam folder too." });
       setOtp("");
@@ -352,6 +358,19 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
                 ))}
               </select>
             )}
+          </div>
+          <div className="space-y-2">
+            <label className={labelClass}>Level</label>
+            <select
+              value={level}
+              onChange={(e) => setLevel(e.target.value)}
+              required
+              className="flex h-10 w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Select level</option>
+              <option value="100">100 Level (new student)</option>
+              <option value="200">200 Level (direct entry)</option>
+            </select>
           </div>
           <div className="space-y-2">
             <label className={labelClass}>Password</label>

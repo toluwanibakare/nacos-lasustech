@@ -29,9 +29,9 @@ const sendCode = async (res, data, fallbackMessage) => {
 };
 
 router.post('/register', async (req, res) => {
-  const { full_name, email, password, department } = req.body;
+  const { full_name, email, password, department, level } = req.body;
   try {
-    const data = await centralPost('fresher_register', { full_name, email, password, department });
+    const data = await centralPost('fresher_register', { full_name, email, password, department, level });
     await sendCode(res, data, 'We sent a verification code to your email.');
   } catch (error) {
     sendCentralError(res, error, 'Could not create your account.');
@@ -76,7 +76,7 @@ router.post('/login', async (req, res) => {
         department: fresher.department,
         profile_image: fresher.image_path,
         account_type: 'fresher',
-        level: '100',
+        level: fresher.level || '100',
         role: 'fresher',
         post: 'Fresher',
       },
@@ -105,6 +105,23 @@ router.post('/reset-password', async (req, res) => {
     res.json(await centralPost('fresher_reset', { email, otp, new_password }));
   } catch (error) {
     sendCentralError(res, error, 'Invalid or expired code.');
+  }
+});
+
+/**
+ * The fresher adds the matric number they have been given. They become a student of the level they registered for
+ * (100, or 200 for direct entry) and sign in as a stalite from then on, with the same password.
+ */
+router.post('/matric', protect, async (req, res) => {
+  if (req.user.account_type !== 'fresher') {
+    res.status(403).json({ message: 'Fresher accounts only.' });
+    return;
+  }
+  try {
+    const data = await centralPost('fresher_set_matric', { fresher_id: req.user.id, matric_no: req.body.matric_no });
+    res.json({ status: 'success', matric_no: data.matric_no, level: data.level });
+  } catch (error) {
+    sendCentralError(res, error, 'Could not save your matric number.');
   }
 });
 

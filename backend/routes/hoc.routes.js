@@ -48,10 +48,10 @@ const withFileUrl = (item) => {
 
 // ── Any signed-in member (student or fresher): materials for my own level and department ──
 router.get('/my-items', protect, handle(async (req, res) => {
-  let level = '100';
-  if (req.user.account_type !== 'fresher') {
-    level = (await centralGet('hoc_profile', { matric: req.user.matric })).level;
-  }
+  // A fresher is 100 level, or 200 level for direct entry.
+  const level = req.user.account_type === 'fresher'
+    ? (await centralGet('fresher_profile', { fresher_id: req.user.id })).profile.level
+    : (await centralGet('hoc_profile', { matric: req.user.matric })).level;
   if (!['100', '200', '300', '400'].includes(level)) {
     res.json([]);
     return;

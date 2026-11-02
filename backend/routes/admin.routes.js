@@ -4,7 +4,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import protect from '../middleware/auth.middleware.js';
+import protect, { clearFlagCache } from '../middleware/auth.middleware.js';
 import { centralGet, centralPost, sendCentralError } from '../services/central.service.js';
 import { audienceCounts, createCampaign, listCampaigns, sendCampaignBatch } from '../services/campaign.service.js';
 import isAdmin from '../middleware/admin.middleware.js';
@@ -246,8 +246,8 @@ router.get('/settings/fees', async (_req, res, next) => {
 
 router.put('/settings/fees', async (req, res, next) => {
   try {
-    const { idCardStalite, idCardFresher, dues } = req.body;
-    const values = { idCardStalite, idCardFresher, dues };
+    const { idCardStalite, idCardFresher, dues, idFlag } = req.body;
+    const values = { idCardStalite, idCardFresher, dues, idFlag };
     for (const [name, value] of Object.entries(values)) {
       if (value !== undefined && (!Number.isFinite(Number(value)) || Number(value) < 0)) {
         res.status(422).json({ message: `Invalid amount for ${name}.` });
@@ -532,6 +532,12 @@ router.get('/freshers', central(async (_req, res) => {
   res.json(await centralGet('get_all_freshers'));
 }));
 
+// Ask every fresher who has no matric number on their account yet to update it.
+router.post('/freshers/remind-matric', central(async (_req, res) => {
+  const people = await centralGet('freshers_without_matric');
+  res.json({ total: people.length, ...emailInBackground(people, (p) => emailService.sendMatricUpdateReminder(p.email, p.full_name), 'Matric reminder') });
+}));
+
 router.post('/freshers/:id/matric', central(async (req, res) => {
   res.json(await centralPost('assign_fresher_matric', { fresher_id: req.params.id, matric_no: req.body.matric_no }));
 }));
@@ -540,8 +546,85 @@ router.get('/id-requests', central(async (_req, res) => {
   res.json(await centralGet('get_id_requests'));
 }));
 
+/**
+ * Emails go out one after the other in the background, so a long list never holds the admin's request open.
+ * A person with no email on file (a student who registered for the card only) is skipped and counted.
+ */
+const emailInBackground = (people, send, label) => {
+  const withEmail = people.filter((p) => p.email);
+  (async () => {
+    let failed = 0;
+    for (const person of withEmail) {
+      try {
+        await send(person);
+      } catch (error) {
+        failed += 1;
+        console.error(`${label} email to ${person.email} failed:`, error.message);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    if (failed) console.error(`${label}: ${failed} of ${withEmail.length} emails failed.`);
+  })();
+  return { emailed: withEmail.length, noEmail: people.length - withEmail.length };
+};
+
+const idList = (value) => (Array.isArray(value) ? value.map(Number).filter(Number.isInteger) : []);
+
+// Moves one or more ID card requests to a status. Moving to "ready" (printed) emails each person whose request
+// actually changed: their card is waiting at the department.
+router.post('/id-requests/status', central(async (req, res) => {
+  const ids = idList(req.body.ids);
+  const { status } = req.body;
+  if (!ids.length) {
+    res.status(400).json({ message: 'Select at least one request.' });
+    return;
+  }
+  const result = await centralPost('set_id_requests_status', { ids, status });
+  const notified = status === 'ready'
+    ? emailInBackground(result.changed, (p) => emailService.sendIdCardReady(p.email, p.full_name), 'ID card ready')
+    : { emailed: 0, noEmail: 0 };
+  res.json({ changed: result.changed.length, skipped: result.skipped, ...notified });
+}));
+
 router.put('/id-requests/:id/status', central(async (req, res) => {
-  res.json(await centralPost('set_id_request_status', { id: req.params.id, status: req.body.status }));
+  const result = await centralPost('set_id_requests_status', { ids: [Number(req.params.id)], status: req.body.status });
+  if (req.body.status === 'ready') {
+    emailInBackground(result.changed, (p) => emailService.sendIdCardReady(p.email, p.full_name), 'ID card ready');
+  }
+  if (!result.changed.length) {
+    res.status(404).json({ message: 'Request not found, unpaid, flagged, or already in that status.' });
+    return;
+  }
+  res.json({ status: 'success' });
+}));
+
+// Flag ID cards: the person pays the flag fee for a new card and is locked out of the portal until they do.
+router.post('/id-requests/flag', central(async (req, res) => {
+  const ids = idList(req.body.ids);
+  const reason = String(req.body.reason || '').trim();
+  if (!ids.length) {
+    res.status(400).json({ message: 'Select at least one request.' });
+    return;
+  }
+  if (reason.length < 3) {
+    res.status(400).json({ message: 'Give a short reason for the flag.' });
+    return;
+  }
+  const result = await centralPost('id_flag_set', { ids, reason });
+  clearFlagCache();
+  const notified = emailInBackground(result.flagged, (p) => emailService.sendIdCardFlagged(p.email, p.full_name, reason, result.fee), 'ID card flag');
+  res.json({ flagged: result.flagged.length, skipped: result.skipped, fee: result.fee, ...notified });
+}));
+
+router.post('/id-requests/unflag', central(async (req, res) => {
+  const ids = idList(req.body.ids);
+  if (!ids.length) {
+    res.status(400).json({ message: 'Select at least one request.' });
+    return;
+  }
+  const result = await centralPost('id_flag_clear', { ids });
+  clearFlagCache();
+  res.json(result);
 }));
 
 // Generates ID card PNG(s) (a ZIP when several) and streams the file back.

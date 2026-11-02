@@ -373,6 +373,55 @@ export const sendCustomEmail = async (to, subject, htmlContent) => {
   return mailer.sendMail(mailOptions);
 };
 
+const portalUrl = () => (process.env.FRONTEND_URL || 'https://www.nacoslasustech.org.ng').replace(/\/$/, '');
+const escapeHtml = (value) =>
+  String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const button = (href, label) =>
+  `<p style="margin: 24px 0;"><a href="${href}" style="background-color: ${PRIMARY_COLOR}; color: #ffffff; padding: 12px 24px; border-radius: 999px; text-decoration: none; font-weight: bold; display: inline-block;">${label}</a></p>`;
+
+/** The ID card has been printed and is waiting at the department. */
+export const sendIdCardReady = async (userEmail, userName) =>
+  sendCustomEmail(
+    userEmail,
+    'Your NACOS ID card is ready',
+    `
+      <h3 style="color: #333; margin-top: 0;">Your ID card is ready</h3>
+      <p>Hello ${escapeHtml(userName)}, your NACOS LASUSTECH ID card has been printed.</p>
+      <p>Please collect it from the department as soon as you can. Bring a means of identification if you are asked for one.</p>
+    `,
+  );
+
+/** The ID card was flagged: the person must pay the flag fee to get a new card, and the portal stays locked until then. */
+export const sendIdCardFlagged = async (userEmail, userName, reason, fee) =>
+  sendCustomEmail(
+    userEmail,
+    'Your NACOS account has been flagged',
+    `
+      <h3 style="color: #b91c1c; margin-top: 0;">Your account has been flagged</h3>
+      <p>Hello ${escapeHtml(userName)}, your ID card request has been flagged because the ID card rules were not followed.</p>
+      <div style="margin: 20px 0; padding: 16px; background-color: #fef2f2; border-left: 4px solid #b91c1c; border-radius: 4px;">
+        <p style="margin: 0; font-weight: bold;">Reason</p>
+        <p style="margin: 6px 0 0 0;">${escapeHtml(reason)}</p>
+      </div>
+      <p>You will not be able to use your portal until a new ID card is paid for. The fee is <strong>₦${Number(fee).toLocaleString('en-NG')}</strong>. Sign in, follow the instructions on the ID card page, and pay it. A new card will then be generated for you.</p>
+      <p>Please do this as soon as possible.</p>
+      ${button(`${portalUrl()}/dashboard`, 'Go to my portal')}
+    `,
+  );
+
+/** Freshers already have matric numbers: ask them to put it on their account. */
+export const sendMatricUpdateReminder = async (userEmail, userName) =>
+  sendCustomEmail(
+    userEmail,
+    'Please update your matric number',
+    `
+      <h3 style="color: #333; margin-top: 0;">Update your matric number</h3>
+      <p>Hello ${escapeHtml(userName)}, you have been given a matric number, so please add it to your NACOS account.</p>
+      <p>Sign in to your portal and use <strong>Update my matric number</strong>. This moves you from a fresher account to a full student account, and you can then get your ID card.</p>
+      ${button(`${portalUrl()}/dashboard`, 'Update my matric number')}
+    `,
+  );
+
 /** Resolves if the mail server accepts our connection and login; rejects with the reason otherwise. */
 export const verifyConnection = async () => {
   if (!USE_CENTRAL) return transporter.verify();
@@ -431,6 +480,9 @@ export default {
   sendOtp,
   sendVerificationCode,
   sendCustomEmail,
+  sendIdCardReady,
+  sendIdCardFlagged,
+  sendMatricUpdateReminder,
   verifyConnection,
   checkMail,
   friendlyMailError,

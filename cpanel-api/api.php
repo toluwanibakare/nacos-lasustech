@@ -64,7 +64,8 @@ function fresher_view(array $f): array
 {
     $f = public_row($f);
     $f['account_type'] = 'fresher';
-    $f['level'] = '100';
+    // 100 for a new student, 200 for a direct entry student; rows from before levels existed are 100.
+    $f['level'] = in_array(($f['level'] ?? ''), ['100', '200'], true) ? $f['level'] : '100';
     $f['post'] = 'Fresher';
     return $f;
 }
@@ -203,6 +204,7 @@ if ($method === 'GET' && $action === 'get_fees') {
         'id_card_stalite' => id_card_fee($pdo, 'student'),
         'id_card_fresher' => id_card_fee($pdo, 'fresher'),
         'dues' => (float) setting($pdo, 'fee_dues', '2000'),
+        'id_flag' => id_flag_fee($pdo),
         'departments' => allowed_departments($pdo),
         'welcome_message' => setting($pdo, 'welcome_message', ''),
         'community_link' => setting($pdo, 'whatsapp_community_link', ''),
@@ -222,6 +224,7 @@ if ($action === 'set_fees') {
         'id_card_stalite' => ['fee_id_card_stalite', 'fees'],
         'id_card_fresher' => ['fee_id_card_fresher', 'fees'],
         'dues' => ['fee_dues', 'fees'],
+        'id_flag' => ['fee_id_flag', 'fees'],
     ];
     $stmt = $pdo->prepare(
         'INSERT INTO site_settings (setting_key, setting_value, setting_group) VALUES (?, ?, ?)
@@ -484,6 +487,9 @@ if ($action === 'fresher_register') {
     $hash = password_hash(validate_password($in['password'] ?? ''), PASSWORD_DEFAULT);
     $dept = trim((string) ($in['department'] ?? ''));
     if (!in_array($dept, allowed_departments($pdo), true)) fail('Select a valid department.');
+    // 100 = new student, 200 = direct entry. Anything else is refused rather than guessed.
+    $level = (string) ($in['level'] ?? '100');
+    if (!in_array($level, ['100', '200'], true)) fail('Select 100 level or 200 level (direct entry).');
 
     $existing = find_fresher($pdo, null, $email);
     $otp = new_otp();
@@ -492,11 +498,11 @@ if ($action === 'fresher_register') {
     if ($existing) {
         if ((int) $existing['email_verified'] === 1) fail('An account with this email already exists. Please sign in.', 409);
         // Unverified: let them re-submit, refresh details and OTP.
-        $pdo->prepare('UPDATE freshers SET full_name = ?, password = ?, department = ?, otp_code = ?, otp_expiry = ? WHERE id = ?')
-            ->execute([$name, $hash, $dept, $otp, $expiry, $existing['id']]);
+        $pdo->prepare('UPDATE freshers SET full_name = ?, password = ?, department = ?, level = ?, otp_code = ?, otp_expiry = ? WHERE id = ?')
+            ->execute([$name, $hash, $dept, $level, $otp, $expiry, $existing['id']]);
     } else {
-        $pdo->prepare('INSERT INTO freshers (full_name, email, password, department, otp_code, otp_expiry) VALUES (?, ?, ?, ?, ?, ?)')
-            ->execute([$name, $email, $hash, $dept, $otp, $expiry]);
+        $pdo->prepare('INSERT INTO freshers (full_name, email, password, department, level, otp_code, otp_expiry) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            ->execute([$name, $email, $hash, $dept, $level, $otp, $expiry]);
     }
     json_out(['status' => 'success', 'email' => $email, 'full_name' => $name, 'otp' => $otp]);
 }
@@ -610,7 +616,8 @@ if ($action === 'id_application') {
         delete_photo($oldImage);
     }
 
-    $fee = id_card_fee($pdo, $person['type']);
+    // A flagged request keeps paying the flag fee when the person edits their application.
+    $fee = !empty($existing['flagged']) ? id_flag_fee($pdo) : id_card_fee($pdo, $person['type']);
     $fields = [
         $image,
         $row['full_name'],
@@ -651,10 +658,14 @@ if ($method === 'GET' && $action === 'id_card_status') {
     [$col_status, $pid_status] = person_key($person);
     $hasMatric = !empty($row['matric_no']);
     $paid = $request && $request['status'] !== 'awaiting_payment';
+    $flagged = $request && !empty($request['flagged']);
     json_out([
         'status' => $request ? 'success' : 'Not Registered',
         'request' => $request,
-        'fee' => id_card_fee($pdo, $person['type']),
+        'fee' => $flagged ? id_flag_fee($pdo) : id_card_fee($pdo, $person['type']),
+        'flagged' => $flagged,
+        'flag_reason' => $flagged ? $request['flag_reason'] : null,
+        'flag_fee' => id_flag_fee($pdo),
         'photo' => ['image_path' => $row['image_path'] ?? null, 'zoom' => $row['photo_zoom'] ?? null, 'cx' => $row['photo_cx'] ?? null, 'cy' => $row['photo_cy'] ?? null],
         // Freshers pay and arrange their photo now, but the card is only issued once a matric number exists.
         'card_issuable' => $paid && $hasMatric,
@@ -668,7 +679,7 @@ if ($method === 'GET' && $action === 'id_card_status') {
 
 if ($method === 'GET' && $action === 'get_id_requests') {
     $stmt = $pdo->prepare(
-        "SELECT r.*, COALESCE(s.department, f.department) AS department, COALESCE(s.level, '100') AS level,
+        "SELECT r.*, COALESCE(s.department, f.department) AS department, COALESCE(s.level, f.level, '100') AS level,
                 s.is_generated, (COALESCE(s.matric_no, f.matric_no) IS NOT NULL) AS has_matric,
                 (s.post IS NOT NULL AND LOWER(TRIM(s.post)) NOT IN ('', 'student', 'fresher')) AS dues_exempt,
                 EXISTS(SELECT 1 FROM payments p WHERE p.payment_type = 'dues' AND p.status = 'success' AND p.session = :sess
@@ -691,6 +702,121 @@ if ($action === 'set_id_request_status') {
     $stmt->execute([$status, (int) ($in['id'] ?? 0)]);
     if ($stmt->rowCount() === 0) fail('Request not found, unpaid, or already in that status.', 404);
     json_out(['status' => 'success']);
+}
+
+/** Who to email about an ID card request: name and address, from the student or fresher row. */
+function id_request_contacts(PDO $pdo, array $ids): array
+{
+    if (!$ids) return [];
+    $marks = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $pdo->prepare(
+        "SELECT r.id, r.status, r.flag_reason, r.account_type,
+                COALESCE(s.full_name, f.full_name, r.full_name) AS full_name,
+                COALESCE(NULLIF(TRIM(s.email), ''), NULLIF(TRIM(f.email), '')) AS email
+         FROM id_card_requests r
+         LEFT JOIN students s ON s.id = r.student_id
+         LEFT JOIN freshers f ON f.id = r.fresher_id
+         WHERE r.id IN ($marks)"
+    );
+    $stmt->execute($ids);
+    return $stmt->fetchAll();
+}
+
+function request_ids(array $in): array
+{
+    return array_values(array_unique(array_filter(array_map('intval', (array) ($in['ids'] ?? [])))));
+}
+
+// Moves several requests to one status at once (the admin "Mark as printed" button uses this with 'ready').
+// Only requests that actually change are returned, so the person is emailed once, not every time the button is pressed.
+if ($action === 'set_id_requests_status') {
+    need_post($method);
+    $in = input();
+    $status = (string) ($in['status'] ?? '');
+    if (!in_array($status, ['pending', 'processing', 'ready', 'collected'], true)) fail('Invalid status.');
+    $ids = request_ids($in);
+    if (!$ids) fail('No requests selected.');
+    $marks = implode(',', array_fill(0, count($ids), '?'));
+
+    // Unpaid and flagged requests cannot be moved: they have not paid for a card.
+    $stmt = $pdo->prepare("SELECT id FROM id_card_requests WHERE id IN ($marks) AND status <> 'awaiting_payment' AND status <> ? AND flagged = 0");
+    $stmt->execute([...$ids, $status]);
+    $changeIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    if ($changeIds) {
+        $cm = implode(',', array_fill(0, count($changeIds), '?'));
+        $pdo->prepare("UPDATE id_card_requests SET status = ? WHERE id IN ($cm)")->execute([$status, ...$changeIds]);
+    }
+    json_out(['status' => 'success', 'changed' => id_request_contacts($pdo, $changeIds), 'skipped' => count($ids) - count($changeIds)]);
+}
+
+// ─── ID card flags ───────────────────────────────────────────────────────────
+// A flagged request pays the flag fee instead of the card fee and the portal stays locked until it is paid.
+
+if ($action === 'id_flag_set') {
+    need_post($method);
+    $in = input();
+    $ids = request_ids($in);
+    if (!$ids) fail('No requests selected.');
+    $reason = trim((string) ($in['reason'] ?? ''));
+    if (mb_strlen($reason) < 3) fail('Give a short reason for the flag.');
+    $reason = mb_substr($reason, 0, 255);
+    $fee = id_flag_fee($pdo);
+    if ($fee <= 0) fail('The flag fee is not set. Set it in Settings first.');
+
+    $marks = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $pdo->prepare("SELECT id, student_id, status FROM id_card_requests WHERE id IN ($marks) AND flagged = 0");
+    $stmt->execute($ids);
+    $rows = $stmt->fetchAll();
+
+    $pdo->beginTransaction();
+    try {
+        foreach ($rows as $r) {
+            $pdo->prepare(
+                "UPDATE id_card_requests
+                 SET flagged = 1, flag_reason = ?, flagged_at = NOW(), flag_prev_status = ?, status = 'awaiting_payment', fee_amount = ?, payment_reference = NULL
+                 WHERE id = ?"
+            )->execute([$reason, $r['status'], $fee, $r['id']]);
+            // The old card is void: the person can fix their application and a new card is made after they pay.
+            if ($r['student_id']) $pdo->prepare('UPDATE students SET is_generated = 0 WHERE id = ?')->execute([$r['student_id']]);
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        fail('Could not flag those ID cards.', 500);
+    }
+    $flaggedIds = array_map(static fn($r) => (int) $r['id'], $rows);
+    json_out(['status' => 'success', 'fee' => $fee, 'flagged' => id_request_contacts($pdo, $flaggedIds), 'skipped' => count($ids) - count($rows)]);
+}
+
+if ($action === 'id_flag_clear') {
+    need_post($method);
+    $ids = request_ids(input());
+    if (!$ids) fail('No requests selected.');
+    $marks = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $pdo->prepare("SELECT r.id, r.account_type, r.flag_prev_status FROM id_card_requests r WHERE r.id IN ($marks) AND r.flagged = 1");
+    $stmt->execute($ids);
+    $cleared = 0;
+    foreach ($stmt->fetchAll() as $r) {
+        $prev = in_array($r['flag_prev_status'], ['awaiting_payment', 'pending', 'processing', 'ready', 'collected'], true) ? $r['flag_prev_status'] : 'awaiting_payment';
+        $pdo->prepare('UPDATE id_card_requests SET flagged = 0, flag_reason = NULL, flagged_at = NULL, flag_prev_status = NULL, status = ?, fee_amount = ? WHERE id = ?')
+            ->execute([$prev, id_card_fee($pdo, (string) $r['account_type']), $r['id']]);
+        $cleared++;
+    }
+    json_out(['status' => 'success', 'cleared' => $cleared]);
+}
+
+// A light check the backend makes (and caches briefly) to keep a flagged person out of the portal.
+if ($method === 'GET' && $action === 'id_flag_status') {
+    $fresher = ($_GET['account_type'] ?? 'student') === 'fresher';
+    if ($fresher) {
+        $stmt = $pdo->prepare('SELECT flagged, flag_reason FROM id_card_requests WHERE fresher_id = ? ORDER BY id DESC LIMIT 1');
+        $stmt->execute([(int) ($_GET['fresher_id'] ?? 0)]);
+    } else {
+        $stmt = $pdo->prepare('SELECT r.flagged, r.flag_reason FROM id_card_requests r JOIN students s ON s.id = r.student_id WHERE s.matric_no = ? ORDER BY r.id DESC LIMIT 1');
+        $stmt->execute([trim((string) ($_GET['matric'] ?? ''))]);
+    }
+    $row = $stmt->fetch();
+    json_out(['flagged' => (bool) ($row['flagged'] ?? false), 'reason' => $row['flag_reason'] ?? null]);
 }
 
 // ─── Payments ────────────────────────────────────────────────────────────────
@@ -781,6 +907,13 @@ if ($action === 'log_payment_success') {
     try {
         foreach ($payments as $payment) {
             $pdo->prepare("UPDATE payments SET status = 'success' WHERE id = ?")->execute([$payment['id']]);
+            if ($payment['payment_type'] === 'id_flag') {
+                // Paying the flag fee clears the flag and puts the request back in the queue for a new card.
+                $col = $payment['fresher_id'] ? 'fresher_id' : 'student_id';
+                $pid = $payment['fresher_id'] ?: $payment['student_id'];
+                $pdo->prepare("UPDATE id_card_requests SET flagged = 0, status = 'pending', payment_reference = ? WHERE $col = ? AND flagged = 1")
+                    ->execute([$reference, $pid]);
+            }
             if ($payment['payment_type'] === 'id_card') {
                 $col = $payment['fresher_id'] ? 'fresher_id' : 'student_id';
                 $pid = $payment['fresher_id'] ?: $payment['student_id'];
@@ -800,26 +933,30 @@ if ($action === 'log_payment_success') {
     json_out(['status' => 'success']);
 }
 
-// ─── Admin: assign a matric number to a fresher ──────────────────────────────
+// ─── Matric numbers for freshers ─────────────────────────────────────────────
 
-if ($action === 'assign_fresher_matric') {
-    need_post($method);
-    $in = input();
-    $fresher = find_fresher($pdo, $in['fresher_id'] ?? null, null);
-    if (!$fresher) fail('Fresher not found.', 404);
-    if ($fresher['status'] === 'promoted') fail('This fresher already has a matric number.', 409);
+/**
+ * Turns a fresher into a student with the given matric number. The student keeps the fresher's level
+ * (100, or 200 for direct entry), password, photo, payments and ID card request.
+ * Fails (and the caller sees the message) when the number is badly formed or already taken.
+ */
+function promote_fresher(PDO $pdo, array $fresher, string $rawMatric): array
+{
+    if ($fresher['status'] === 'promoted') fail('This account already has a matric number.', 409);
+    if ($fresher['status'] === 'disabled') fail('This account is disabled.', 403);
 
-    $matric = strtoupper(trim((string) ($in['matric_no'] ?? '')));
+    $matric = strtoupper(trim($rawMatric));
     if (!preg_match('/^[A-Z0-9\/-]{6,100}$/', $matric)) fail('Enter a valid matric number.');
     if (find_student_by_matric($pdo, $matric)) fail('That matric number already belongs to a student.', 409);
+    $level = in_array(($fresher['level'] ?? ''), ['100', '200'], true) ? $fresher['level'] : '100';
 
     $pdo->beginTransaction();
     try {
         $pdo->prepare(
             "INSERT INTO students (full_name, level, department, email, email_verified, whatsapp_number, gender, birthday, post, matric_no, image_path, password, photo_zoom, photo_cx, photo_cy)
-             VALUES (?, '100', ?, ?, 1, ?, ?, ?, 'Student', ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, 1, ?, ?, ?, 'Student', ?, ?, ?, ?, ?, ?)"
         )->execute([
-            $fresher['full_name'], $fresher['department'], $fresher['email'], $fresher['whatsapp_number'],
+            $fresher['full_name'], $level, $fresher['department'], $fresher['email'], $fresher['whatsapp_number'],
             $fresher['gender'], $fresher['birthday'], $matric, $fresher['image_path'] ?? '', $fresher['password'],
             $fresher['photo_zoom'], $fresher['photo_cx'], $fresher['photo_cy'],
         ]);
@@ -830,9 +967,37 @@ if ($action === 'assign_fresher_matric') {
         $pdo->commit();
     } catch (PDOException $e) {
         $pdo->rollBack();
-        fail($e->getCode() === '23000' ? 'That matric number is already in use.' : 'Could not assign the matric number.', $e->getCode() === '23000' ? 409 : 500);
+        fail($e->getCode() === '23000' ? 'That matric number is already in use.' : 'Could not save the matric number.', $e->getCode() === '23000' ? 409 : 500);
     }
-    json_out(['status' => 'success', 'student_id' => $studentId, 'matric_no' => $matric]);
+    return ['status' => 'success', 'student_id' => $studentId, 'matric_no' => $matric, 'level' => $level];
+}
+
+// Admin: assign a matric number to a fresher.
+if ($action === 'assign_fresher_matric') {
+    need_post($method);
+    $in = input();
+    $fresher = find_fresher($pdo, $in['fresher_id'] ?? null, null);
+    if (!$fresher) fail('Fresher not found.', 404);
+    json_out(promote_fresher($pdo, $fresher, (string) ($in['matric_no'] ?? '')));
+}
+
+// The fresher updates their own matric number once they have one. They become a student of the level they registered for.
+if ($action === 'fresher_set_matric') {
+    need_post($method);
+    $in = input();
+    $fresher = find_fresher($pdo, $in['fresher_id'] ?? null, null);
+    if (!$fresher) fail('Fresher account not found.', 404);
+    json_out(promote_fresher($pdo, $fresher, (string) ($in['matric_no'] ?? '')));
+}
+
+// Verified freshers who still have no matric number: who to remind to update it.
+if ($method === 'GET' && $action === 'freshers_without_matric') {
+    $rows = $pdo->query(
+        "SELECT id, full_name, email, level FROM freshers
+         WHERE email_verified = 1 AND status IN ('active', 'pending_verification') AND (matric_no IS NULL OR matric_no = '')
+         ORDER BY id"
+    )->fetchAll();
+    json_out($rows);
 }
 
 // ─── Card generation (admin triggers this through the Node backend) ──────────
@@ -878,6 +1043,8 @@ if ($action === 'generate_cards') {
         $tmp = sys_get_temp_dir() . '/id_' . $s['id'] . '_' . uniqid() . '.png';
         if (card_render($s, $tmp, $template, $fonts, __DIR__)) {
             $pdo->prepare('UPDATE students SET is_generated = 1 WHERE id = ?')->execute([$s['id']]);
+            // A generated card is in production. Later stages (ready, collected) are never moved backwards.
+            $pdo->prepare("UPDATE id_card_requests SET status = 'processing' WHERE student_id = ? AND status = 'pending' AND flagged = 0")->execute([$s['id']]);
             $files[] = ['path' => $tmp, 'name' => preg_replace('/[^A-Za-z0-9_-]/', '_', $s['matric_no']) . '.png'];
         }
     }
@@ -1323,8 +1490,10 @@ function audience_sql(array $a): array
     if (in_array($type, ['level', 'level_department'], true)) {
         $studentWhere[] = 'level = ?';
         $studentArgs[] = $level;
-        // Freshers are 100L.
-        if ($level !== '100') $includeFreshers = false;
+        // Freshers are 100 level, or 200 level for direct entry.
+        $fresherWhere[] = 'level = ?';
+        $fresherArgs[] = $level;
+        if (!in_array($level, ['100', '200'], true)) $includeFreshers = false;
     }
     if (in_array($type, ['department', 'level_department'], true)) {
         $studentWhere[] = 'department = ?';
@@ -1361,7 +1530,8 @@ function audience_total(PDO $pdo, array $a): int
     if ($type === 'alumni') $sw[] = "level = 'alumni'"; else $sw[] = "level <> 'alumni'";
     if (in_array($type, ['level', 'level_department'], true)) {
         $sw[] = 'level = ?'; $sa[] = $level;
-        if ($level !== '100') $freshers = false;
+        $fw[] = 'level = ?'; $fa[] = $level;
+        if (!in_array($level, ['100', '200'], true)) $freshers = false;
     }
     if (in_array($type, ['department', 'level_department'], true)) {
         $sw[] = 'department = ?'; $sa[] = $dept;

@@ -24,6 +24,7 @@ const AcademicSettings = () => {
   const [stalite, setStalite] = useState("");
   const [fresher, setFresher] = useState("");
   const [dues, setDues] = useState("");
+  const [idFlag, setIdFlag] = useState("");
   const [academicSaved, setAcademicSaved] = useState(false);
   const [feesSaved, setFeesSaved] = useState(false);
   const [academicErr, setAcademicErr] = useState<string | null>(null);
@@ -44,6 +45,7 @@ const AcademicSettings = () => {
       setStalite(String(fees.data.idCardStalite ?? ""));
       setFresher(String(fees.data.idCardFresher ?? ""));
       setDues(String(fees.data.dues ?? ""));
+      setIdFlag(String(fees.data.idFlag ?? ""));
     }
   }, [fees.data]);
 
@@ -63,7 +65,7 @@ const AcademicSettings = () => {
   };
 
   const saveFees = async () => {
-    const values = { idCardStalite: stalite, idCardFresher: fresher, dues };
+    const values = { idCardStalite: stalite, idCardFresher: fresher, dues, idFlag };
     const parsed: Record<string, number> = {};
     for (const [k, v] of Object.entries(values)) {
       const n = Number(v);
@@ -127,7 +129,7 @@ const AcademicSettings = () => {
       </Card>
 
       <Card title="Fees" description={`Amounts in naira. Dues apply to session ${fees.data?.session || session}.`}>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Field label="ID card (stalites)" hint={formatNaira(Number(stalite))}>
             <Input className="rounded-full" inputMode="numeric" value={stalite} onChange={(e) => { setStalite(e.target.value); setFeesSaved(false); }} />
           </Field>
@@ -136,6 +138,9 @@ const AcademicSettings = () => {
           </Field>
           <Field label="Dues" hint={formatNaira(Number(dues))}>
             <Input className="rounded-full" inputMode="numeric" value={dues} onChange={(e) => { setDues(e.target.value); setFeesSaved(false); }} />
+          </Field>
+          <Field label="Flagged ID card (new card)" hint={`${formatNaira(Number(idFlag))}. Paid instead of the normal ID card fee after a flag.`}>
+            <Input className="rounded-full" inputMode="numeric" value={idFlag} onChange={(e) => { setIdFlag(e.target.value); setFeesSaved(false); }} />
           </Field>
         </div>
         {feesErr && <p className="mt-3 text-sm text-red-700">{feesErr}</p>}
