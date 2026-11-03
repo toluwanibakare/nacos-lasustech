@@ -27,9 +27,6 @@ const quickLinks = [
   { label: "Events", path: "/events" },
   { label: "Gallery", path: "/gallery" },
   { label: "Donate", path: "/donate" },
-  { label: "Contact Us", path: "/contact" },
-  { label: "Suggestion Box", path: "/contact#suggestion" },
-  { label: "Complaint Box", path: "/contact#complaint" },
 ];
 
 const resourceLinks = [
@@ -182,7 +179,27 @@ const Footer = () => {
                 </a>
               </li>
               <li>LASUSTECH, Ikorodu, Lagos</li>
+              <li>
+                <Link to="/contact" className="transition-colors hover:text-white">
+                  Contact Us
+                </Link>
+              </li>
             </ul>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link
+                to="/contact#suggestion"
+                className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/70 transition-colors hover:border-white/40 hover:text-white"
+              >
+                Suggestion Box
+              </Link>
+              <Link
+                to="/contact#complaint"
+                className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/70 transition-colors hover:border-white/40 hover:text-white"
+              >
+                Complaint Box
+              </Link>
+            </div>
 
             <div className="mt-6 flex flex-wrap gap-4">
               <a

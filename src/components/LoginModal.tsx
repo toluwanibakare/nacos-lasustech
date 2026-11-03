@@ -164,9 +164,9 @@ const LoginModal = ({ open, onClose, redirectTab }: LoginModalProps) => {
         setView("login");
       }
     }}>
-      <DialogContent className="sm:max-w-[400px] border-border/50 shadow-2xl">
+      <DialogContent className="max-h-[92dvh] gap-3 overflow-y-auto overscroll-contain p-5 sm:max-w-[400px] sm:p-6 border-border/50 shadow-2xl">
         <DialogHeader className="flex flex-col items-center text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 mb-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 mb-2">
             <LogIn className="h-6 w-6 text-primary" />
           </div>
           <DialogTitle className="font-display text-2xl font-bold">

@@ -333,16 +333,16 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
       )}
 
       {view === "register" && (
-        <form onSubmit={handleRegister} className="space-y-4">
-          <div className="space-y-2">
+        <form onSubmit={handleRegister} className="space-y-3">
+          <div className="space-y-1">
             <label className={labelClass}>Full Name</label>
             <Input value={fullName} onChange={(e) => setFullName(e.target.value)} required autoComplete="name" className={inputClass} placeholder="Surname first, as on your admission letter" />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1">
             <label className={labelClass}>Email</label>
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" className={inputClass} placeholder="name@example.com" />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1">
             <label className={labelClass}>Level</label>
             <select
               value={level}
@@ -361,7 +361,7 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
               <option value="200">200 Level (direct entry)</option>
             </select>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1">
             <label className={labelClass}>Department</label>
             {deptState === "loading" || deptState === "idle" ? (
               <p className="text-xs text-muted-foreground">Loading departments...</p>
@@ -386,11 +386,11 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
             )}
             {deFixed && <p className="text-xs text-muted-foreground">Direct entry registration is open for {deOptions[0]} only.</p>}
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1">
             <label className={labelClass}>Password</label>
             <PasswordField value={password} onChange={setPassword} placeholder="At least 8 characters" autoComplete="new-password" />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1">
             <label className={labelClass}>Confirm Password</label>
             <PasswordField value={confirm} onChange={setConfirm} placeholder="Re-type password" autoComplete="new-password" />
           </div>
