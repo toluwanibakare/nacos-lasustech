@@ -160,25 +160,49 @@ describe("fresher level and matric number", () => {
 
     fireEvent.change(screen.getByPlaceholderText(/Surname first/) as HTMLInputElement, { target: { value: "Deb Entry" } });
     fireEvent.change(screen.getByPlaceholderText("name@example.com"), { target: { value: "deb@test.dev" } });
-    fireEvent.change(deptSelect, { target: { value: "Computer Science" } });
     fireEvent.change(screen.getByPlaceholderText("At least 8 characters"), { target: { value: "password1" } });
     fireEvent.change(screen.getByPlaceholderText("Re-type password"), { target: { value: "password1" } });
 
-    // Without a level it will not submit.
+    // Level comes first. Without it nothing is sent (the select is required).
     fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(levelSelect.required).toBe(true);
     expect(calls.some((c) => c.url.endsWith("/fresher/register"))).toBe(false);
 
+    // 100 level picks a department freely.
+    fireEvent.change(levelSelect, { target: { value: "100" } });
+    expect(deptSelect.disabled).toBe(false);
+    expect(Array.from(deptSelect.options).map((o) => o.value)).toEqual(["", "Computer Science", "Cyber Security"]);
+    fireEvent.change(deptSelect, { target: { value: "Cyber Security" } });
+
+    // Direct entry: the department is filled in and switched off.
     fireEvent.change(levelSelect, { target: { value: "200" } });
-    // Direct entry only offers the open departments.
-    expect(Array.from(deptSelect.options).map((o) => o.value)).toEqual(["", "Computer Science"]);
+    expect(deptSelect.disabled).toBe(true);
+    expect(deptSelect.value).toBe("Computer Science");
     expect(screen.getByText(/open for Computer Science only/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
     await waitFor(() => {
       const post = calls.find((c) => c.url.endsWith("/fresher/register"));
-      expect(JSON.parse(String(post!.init!.body)).level).toBe("200");
+      const body = JSON.parse(String(post!.init!.body));
+      expect(body.level).toBe("200");
+      expect(body.department).toBe("Computer Science");
     });
+  });
+
+  it("level comes before department, and direct entry is never left with an empty department (even if the server sends no DE list)", async () => {
+    mockFetch({ "/content/settings": () => ({ departments: ["Computer Science", "Software Engineering", "Cyber Security"] }) });
+    render(<MemoryRouter><FresherRegistration onLoggedIn={() => {}} onSwitchToStalite={() => {}} /><Toaster /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: "Create account" }));
+    await screen.findByText("Level");
+    const labels = Array.from(document.querySelectorAll("label")).map((l) => l.textContent);
+    expect(labels.indexOf("Level")).toBeGreaterThan(-1);
+    expect(labels.indexOf("Level")).toBeLessThan(labels.indexOf("Department"));
+    const selects = Array.from(document.querySelectorAll("select")) as HTMLSelectElement[];
+    const levelSelect = selects.find((s) => Array.from(s.options).some((o) => o.value === "200"))!;
+    const deptSelect = selects.find((s) => Array.from(s.options).some((o) => o.value === "Cyber Security"))!;
+    fireEvent.change(levelSelect, { target: { value: "200" } });
+    expect(deptSelect.disabled).toBe(true);
+    expect(deptSelect.value).toBe("Computer Science");
   });
 
   it("the matric card saves it and then asks them to sign in as a stalite", async () => {

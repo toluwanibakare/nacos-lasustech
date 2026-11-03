@@ -74,6 +74,9 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
   const [departments, setDepartments] = useState<string[]>([]);
   // Direct entry (200 level) registration is open to these departments only.
   const [deDepartments, setDeDepartments] = useState<string[]>([]);
+  // Direct entry is open to the departments the server lists; Computer Science if it did not say.
+  const deOptions = deDepartments.length > 0 ? deDepartments : ["Computer Science"];
+  const deFixed = level === "200" && deOptions.length === 1;
   const [deptState, setDeptState] = useState<"idle" | "loading" | "failed" | "ready">("idle");
 
   useEffect(() => {
@@ -340,6 +343,25 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" className={inputClass} placeholder="name@example.com" />
           </div>
           <div className="space-y-2">
+            <label className={labelClass}>Level</label>
+            <select
+              value={level}
+              onChange={(e) => {
+                const next = e.target.value;
+                setLevel(next);
+                // Direct entry is open to one department: it is filled in and switched off.
+                if (next === "200") setDepartment(deOptions.length === 1 ? deOptions[0] : deOptions.includes(department) ? department : "");
+                else if (level === "200") setDepartment("");
+              }}
+              required
+              className="flex h-10 w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Select level</option>
+              <option value="100">100 Level (new student)</option>
+              <option value="200">200 Level (direct entry)</option>
+            </select>
+          </div>
+          <div className="space-y-2">
             <label className={labelClass}>Department</label>
             {deptState === "loading" || deptState === "idle" ? (
               <p className="text-xs text-muted-foreground">Loading departments...</p>
@@ -353,34 +375,16 @@ const FresherRegistration = ({ onLoggedIn, onSwitchToStalite }: FresherRegistrat
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
                 required
-                className="flex h-10 w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                disabled={deFixed}
+                className="flex h-10 w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <option value="">Select department</option>
-                {(level === "200" ? departments.filter((d) => deDepartments.includes(d)) : departments).map((d) => (
+                {(level === "200" ? deOptions : departments).map((d) => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>
             )}
-          </div>
-          <div className="space-y-2">
-            <label className={labelClass}>Level</label>
-            <select
-              value={level}
-              onChange={(e) => {
-                setLevel(e.target.value);
-                // A department picked earlier may not be open to direct entry.
-                if (e.target.value === "200" && !deDepartments.includes(department)) setDepartment("");
-              }}
-              required
-              className="flex h-10 w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="">Select level</option>
-              <option value="100">100 Level (new student)</option>
-              <option value="200">200 Level (direct entry)</option>
-            </select>
-            {level === "200" && deDepartments.length > 0 && (
-              <p className="text-xs text-muted-foreground">Direct entry registration is open for {deDepartments.join(", ")} only.</p>
-            )}
+            {deFixed && <p className="text-xs text-muted-foreground">Direct entry registration is open for {deOptions[0]} only.</p>}
           </div>
           <div className="space-y-2">
             <label className={labelClass}>Password</label>

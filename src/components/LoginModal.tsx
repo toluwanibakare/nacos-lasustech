@@ -202,7 +202,7 @@ const LoginModal = ({ open, onClose, redirectTab }: LoginModalProps) => {
               ))}
             </div>
             {mode === "fresher" && (
-              <p className="mt-2 text-center text-[10px] text-muted-foreground">New 100L student with no matric number yet.</p>
+              <p className="mt-2 text-center text-[10px] text-muted-foreground">New 100L or direct entry (200L) student with no matric number yet.</p>
             )}
           </div>
         )}

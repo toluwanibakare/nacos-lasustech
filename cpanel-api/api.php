@@ -971,6 +971,8 @@ function promote_fresher(PDO $pdo, array $fresher, string $rawMatric): array
         $pdo->commit();
     } catch (PDOException $e) {
         $pdo->rollBack();
+        // The real reason goes to the server's error log, so a failure can be diagnosed instead of guessed at.
+        error_log('promote_fresher failed for fresher ' . $fresher['id'] . ': ' . $e->getMessage());
         fail($e->getCode() === '23000' ? 'That matric number is already in use.' : 'Could not save the matric number.', $e->getCode() === '23000' ? 409 : 500);
     }
     return ['status' => 'success', 'student_id' => $studentId, 'matric_no' => $matric, 'level' => $level];
