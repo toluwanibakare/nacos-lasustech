@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import FeedbackForm from "@/components/FeedbackForm";
 import { maskEmail } from "@/lib/mask-email";
+import { isValidEmail } from "@/lib/email";
 import { NewPasswordFields, passwordProblem } from "@/components/PasswordFields";
 import { studentPhotoUrl } from "@/lib/photo-url";
 import StudentAvatar from "@/components/StudentAvatar";
@@ -153,6 +154,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isDirty, setIsDirty] = useState(false);
   const [initialEmailSet, setInitialEmailSet] = useState(false);
+  const [savedEmailBroken, setSavedEmailBroken] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fees, setFees] = useState<Fees | null>(null);
@@ -236,6 +238,11 @@ const Dashboard = () => {
       welcomeMessage: String(dash?.academicSettings?.welcomeMessage || feeInfo?.welcome_message || ""),
     };
 
+    // The email box locks only when the address saved on the server is a real one. Typing never locks it,
+    // and a broken saved value (one letter, "0") stays editable so the student can fix it.
+    const savedEmail = String(student.email || "").trim();
+    setInitialEmailSet(isValidEmail(savedEmail));
+    setSavedEmailBroken(savedEmail !== "" && !isValidEmail(savedEmail));
     setAdminNotice(dash?.adminNotice || null);
     setIdFlag(dash?.idCard?.flagged ? { reason: String(dash.idCard.flag_reason || "") } : null);
     setAcademicSettings(acad);
@@ -426,20 +433,20 @@ const Dashboard = () => {
   };
 
 
-  useEffect(() => {
-    if (profile.email && !initialEmailSet) {
-      setInitialEmailSet(true);
-    }
-  }, [profile.email]);
-
   const handleUploadProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    // A locked email is never sent again. An open one must be a complete address.
+    const newEmail = initialEmailSet ? "" : profile.email.trim().toLowerCase();
+    if (newEmail && !isValidEmail(newEmail)) {
+      toast({ title: "Check your email", description: "Enter a valid email address, for example name@gmail.com.", variant: "destructive" });
+      return;
+    }
     try {
       const result = await fetchApi('/student/profile', {
         method: 'PUT',
         body: JSON.stringify({
           full_name: profile.fullName,
-          email: profile.email,
+          ...(newEmail ? { email: newEmail } : {}),
           whatsapp_number: profile.whatsappNumber,
           gender: profile.gender,
           birthday: profile.birthday
@@ -449,6 +456,11 @@ const Dashboard = () => {
       if (result.status === 'success' || result.message?.includes('success') || result.id) {
         toast({ title: "Profile Updated", description: "Your changes have been saved successfully." });
         setIsDirty(false); // Reset dirty state
+        if (newEmail) {
+          setProfile((p) => ({ ...p, email: newEmail }));
+          setInitialEmailSet(true);
+          setSavedEmailBroken(false);
+        }
         
         // Update Local User storage for Navbar and persistence
         try {
@@ -456,7 +468,7 @@ const Dashboard = () => {
           const user = (userStr && userStr !== "null") ? JSON.parse(userStr) : {};
           if (user && typeof user === 'object') {
             user.name = String(profile.fullName);
-            user.email = String(profile.email);
+            if (newEmail) user.email = newEmail;
             user.post = String(profile.post);
             localStorage.setItem("user", JSON.stringify(user));
           }
@@ -965,9 +977,11 @@ const Dashboard = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email Address</label>
+                        <label htmlFor="profile-email" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email Address</label>
                         <Input 
+                          id="profile-email"
                           type="email"
+                          autoComplete="email"
                           value={initialEmailSet ? hashEmail(profile.email) : profile.email} 
                           onChange={(e) => {
                             if (!initialEmailSet) {
@@ -978,6 +992,9 @@ const Dashboard = () => {
                           className={`rounded-xl border-border/60 ${initialEmailSet ? "bg-muted/50 cursor-not-allowed" : "border-primary/40 ring-1 ring-primary/10"}`}
                           disabled={initialEmailSet}
                         />
+                        {savedEmailBroken && (
+                          <p className="text-xs font-medium text-red-600">The email saved on your account looks incomplete. Please type your full email address and save.</p>
+                        )}
                         {!initialEmailSet && (
                           <p className="text-[10px] text-primary font-medium italic mt-1 animate-pulse">
                             ⚠️ Note: You cannot easily change your email once added.

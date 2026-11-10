@@ -71,6 +71,13 @@ router.put('/profile', protect, async (req, res) => {
     return;
   }
 
+  // A given email must be a full address; an empty one means "leave the saved email alone".
+  const cleanEmail = String(email ?? '').trim().toLowerCase();
+  if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cleanEmail)) {
+    res.status(400).json({ message: 'Enter a valid email address, for example name@gmail.com.' });
+    return;
+  }
+
   try {
     const profileData = {
       action: 'update_profile',
@@ -78,7 +85,7 @@ router.put('/profile', protect, async (req, res) => {
       matric_no: req.user.matric,
       full_name,
       level,
-      email,
+      email: cleanEmail || undefined,
       whatsapp_number,
       gender,
       birthday: birthday || null,
@@ -103,6 +110,12 @@ router.put('/profile', protect, async (req, res) => {
     throw new Error(response.data.message || 'Update failed');
   } catch (error) {
     console.error('Profile proxy error:', error.response?.data || error.message);
+    // The central server's own explanation (bad email, email already saved) goes to the student as it is.
+    const status = error.response?.status;
+    if (status >= 400 && status < 500 && error.response?.data?.message) {
+      res.status(status).json({ message: error.response.data.message });
+      return;
+    }
     res.status(500).json({
       message: 'Error updating profile on Central System.',
       details: error.response?.data || error.message,

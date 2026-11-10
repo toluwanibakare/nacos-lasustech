@@ -399,6 +399,20 @@ if ($action === 'update_profile') {
     $matric = (string) ($in['matric_number'] ?? $in['matric_no'] ?? '');
     $student = find_student_by_matric($pdo, $matric);
     if (!$student) fail('Student not found', 404);
+
+    // An email is only saved when it is a full address, and a good saved one is not overwritten from here.
+    $email = strtolower(trim((string) ($in['email'] ?? '')));
+    if ($email !== '') {
+        if (strlen($email) > 255 || !filter_var($email, FILTER_VALIDATE_EMAIL) || !str_contains(substr($email, (int) strrpos($email, '@')), '.')) {
+            fail('Enter a valid email address, for example name@gmail.com.');
+        }
+        $saved = strtolower(trim((string) ($student['email'] ?? '')));
+        if ($saved !== '' && $saved !== $email && filter_var($saved, FILTER_VALIDATE_EMAIL)) {
+            fail('Your email is already saved and cannot be changed here. Contact the admin if it is wrong.', 409);
+        }
+    }
+    $in['email'] = $email !== '' ? $email : null;
+
     // level, matric, post and department are admin-controlled; the student cannot change them here.
     $pdo->prepare(
         'UPDATE students SET full_name = COALESCE(?, full_name), email = COALESCE(?, email),
