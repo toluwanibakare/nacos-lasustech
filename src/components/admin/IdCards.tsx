@@ -49,9 +49,14 @@ const IdCards = () => {
     () =>
       data.filter((r) => {
         if (status && r.status !== status) return false;
-        // "fresher" stands in for 100 level for now; the other levels are stalites of that level.
-        if (group === "fresher" && r.account_type !== "fresher") return false;
-        if (group && group !== "fresher" && (r.account_type !== "student" || r.level !== group)) return false;
+        if (group === "100") {
+          if (r.level !== "100") return false;
+          const hasMatric = Boolean((r.matric_number && r.matric_number.trim()) || r.has_matric);
+          const hasPaid = r.status !== "awaiting_payment";
+          if (!hasMatric || !hasPaid) return false;
+        } else if (group) {
+          if (r.level !== group) return false;
+        }
         if (department && r.department !== department) return false;
         return !q || `${r.full_name} ${r.matric_number || ""}`.toLowerCase().includes(q);
       }),
@@ -155,7 +160,7 @@ const IdCards = () => {
         <FilterBar>
           <SearchInput value={search} onChange={setSearch} placeholder="Search name or matric" />
           <SelectField label="Status" value={status} onChange={setStatus} options={[{ value: "", label: "All statuses" }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))]} />
-          <SelectField label="Level" value={group} onChange={setGroup} options={[{ value: "", label: "All levels" }, { value: "fresher", label: "Freshers" }, { value: "200", label: "200 level" }, { value: "300", label: "300 level" }, { value: "400", label: "400 level" }]} />
+          <SelectField label="Level" value={group} onChange={setGroup} options={[{ value: "", label: "All levels" }, { value: "100", label: "100 level" }, { value: "200", label: "200 level" }, { value: "300", label: "300 level" }, { value: "400", label: "400 level" }]} />
           <SelectField label="Department" value={department} onChange={setDepartment} options={[{ value: "", label: "All departments" }, ...departments.map((d) => ({ value: d, label: d }))]} />
         </FilterBar>
 

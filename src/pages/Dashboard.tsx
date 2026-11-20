@@ -772,6 +772,32 @@ const Dashboard = () => {
             </div>
           )}
 
+          {isFresher && !profile.matricNumber && (
+            <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-900 shadow-sm animate-reveal sm:flex-row sm:items-center sm:justify-between w-full">
+              <div className="flex items-start gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-200 text-amber-900">
+                  <AlertCircle className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-amber-950">Action required: Update your matric number</p>
+                  <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                    Everyone should update their matric number now. Once saved, your account moves to full {profile.level === "200" ? "200 level (direct entry)" : "100 level"} student status and your official ID card can be generated.
+                  </p>
+                </div>
+              </div>
+              <Button 
+                size="sm" 
+                onClick={() => {
+                  setActiveTab("overview");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="w-full shrink-0 rounded-full bg-amber-700 text-white hover:bg-amber-800 sm:w-auto"
+              >
+                Update matric number
+              </Button>
+            </div>
+          )}
+
           {isProfileIncomplete && (
             <div className="mb-8 flex flex-col gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-800 animate-reveal sm:flex-row sm:items-center sm:justify-between w-full">
               <div className="flex items-center gap-4">

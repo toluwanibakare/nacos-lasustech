@@ -981,7 +981,7 @@ function promote_fresher(PDO $pdo, array $fresher, string $rawMatric): array
         $studentId = (int) $pdo->lastInsertId();
         $pdo->prepare("UPDATE freshers SET matric_no = ?, student_id = ?, status = 'promoted' WHERE id = ?")->execute([$matric, $studentId, $fresher['id']]);
         $pdo->prepare('UPDATE payments SET student_id = ? WHERE fresher_id = ?')->execute([$studentId, $fresher['id']]);
-        $pdo->prepare('UPDATE id_card_requests SET student_id = ?, matric_number = ? WHERE fresher_id = ?')->execute([$studentId, $matric, $fresher['id']]);
+        $pdo->prepare("UPDATE id_card_requests SET student_id = ?, matric_number = ?, account_type = 'student' WHERE fresher_id = ?")->execute([$studentId, $matric, $fresher['id']]);
         $pdo->commit();
     } catch (PDOException $e) {
         $pdo->rollBack();
