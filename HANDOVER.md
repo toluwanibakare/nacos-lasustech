@@ -1,6 +1,24 @@
 # Handover Notes
 
-## Latest Changes (Nov 20, 2026)
+## Latest Changes (Nov 26, 2026)
+
+### 1. Executive Sessions & Class Rep Promotion (`src/data/executives.ts`)
+- Moved the 2025/2026 Executive Council (including the 2025/2026 400L HOC and Assistant HOC) into the `2025/2026` session archive (`executiveSessions`).
+- Set up the `2026/2027` current session:
+  - Top Leadership & Core Executives are empty pending unveiling of the newly elected council.
+  - Promoted HOCs and Assistant HOCs: 300L -> 400L (`Adegoke Muhammed`, `Matti Jadesola`), 200L -> 300L (`Osho Aishat`, `Samuel John`), 100L -> 200L (`Ayara Michael`, `Olatunji Oyindamola Barakat`), and 100L marked `vacant: true`.
+- Added `hallOfFameByPosition` grouping all past Executive Council posts plus the graduated 400L HOC and Assistant HOC (`2025/2026` onward).
+
+### 2. 3D Executives Hall of Fame (`src/components/ExecutivesHallOfFame3D.tsx`)
+- Added a first-person POV walkable Three.js 3D corridor shown when switching to the `2025/2026 (Hall of Fame)` session tab (or `#hall-of-fame`) on `/executives`.
+- Each executive position has its own physical wall bay with the position title mounted above the portraits, framed portraits, and name/session plaques underneath. Visitors can watch the cinematic Auto Tour slide smoothly from one person to another, enter Fullscreen, listen to the looping Hall of Fame instrumental (`src/assets/The_Script_-_Hall_of_Fame_Instrumental_(mp3.pm).mp3`) with Mute/Unmute, click any wall frame to walk to it, drag to look around, use WASD/Arrow keys, or toggle Grid view.
+
+### 3. Home & Executives Pages (`src/pages/Index.tsx`, `src/pages/Executives.tsx`, `src/components/ExecutiveCard.tsx`)
+- Updated `Executives.tsx` with `2026/2027 (Current)` and `2025/2026 (Hall of Fame)` session tabs; switching to `2025/2026` displays the 3D Executives Hall of Fame and the `2025/2026` council roster.
+- Updated `Index.tsx` Executive Council preview to announce the `2026/2027` council transition, show the promoted `2026/2027` Heads of Class, and link to the `2025/2026` archive and Hall of Fame.
+- Added `vacant` state support to `ExecutiveCard.tsx`.
+
+## Previous Changes (Nov 20, 2026)
 
 ### 1. Database & SQL Migration (`id-card/sql/017_reset_paid_cards_and_promote_freshers.sql`)
 - Promotes every fresher who has a matric number into the `students` table:

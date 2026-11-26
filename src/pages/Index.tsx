@@ -24,7 +24,7 @@ import BlogCard from "@/components/BlogCard";
 import heroBg from "@/assets/Events/bootcamp_onboarding/PHOTO-2026-04-29-19-36-06.jpg";
 import nacosLogo from "@/assets/nacos_logo.png";
 import lasustechLogo from "@/assets/lasustech_logo.png";
-import { executives as staticExecutives } from "@/data/executives";
+import { CURRENT_SESSION, current2026_2027Hocs } from "@/data/executives";
 import { events as staticEvents } from "@/data/events";
 
 // Latest Chapter Moments
@@ -76,7 +76,7 @@ const Index = () => {
 
   // Using static data directly from your .ts files as requested
   const [data] = useState({ 
-    executives: staticExecutives, 
+    hocs: current2026_2027Hocs,
     events: staticEvents 
   });
   const navigate = useNavigate();
@@ -353,11 +353,38 @@ const Index = () => {
           <SectionHeading
             label="Leadership"
             title="Executive Council"
-            description="Meet the student leaders steering the chapter toward excellence."
+            description={`Meet the student leaders steering the chapter for the ${CURRENT_SESSION} academic session.`}
           />
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
-            {data.executives.slice(0, 5).map((exec, index) => (
-              <ExecutiveCard key={exec.id || exec.post} {...exec} revealDelay={index * 0.07} />
+
+          <div className="mt-10 rounded-3xl border border-primary/20 bg-card p-6 md:p-8 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-xl">
+              <span className="inline-block rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
+                {CURRENT_SESSION} Session
+              </span>
+              <h3 className="mt-2 font-display text-xl font-bold text-foreground md:text-2xl">
+                New Executive Council Elected
+              </h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                The {CURRENT_SESSION} Executive Council has been chosen and will be unveiled shortly. Meanwhile, view our promoted Class Representatives below or step into the 2025/2026 Executives Hall of Fame.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3 shrink-0">
+              <Link to="/executives?session=2025/2026">
+                <Button variant="outline" className="rounded-full text-xs font-semibold">
+                  2025/2026 Council
+                </Button>
+              </Link>
+              <Link to="/executives#hall-of-fame">
+                <Button className="rounded-full gap-2 text-xs font-semibold">
+                  Executives Hall of Fame <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {data.hocs.map((exec, index) => (
+              <ExecutiveCard key={exec.post} {...exec} revealDelay={index * 0.07} />
             ))}
           </div>
           <div className="mt-8 text-center text-black">
