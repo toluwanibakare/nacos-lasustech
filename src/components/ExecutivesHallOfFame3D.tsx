@@ -334,6 +334,134 @@ async function renderExecutiveSnapshotPng(
 
 type SocialPlatform = "x" | "linkedin" | "tiktok" | "whatsapp";
 
+const SocialBrandIcon = ({ platform }: { platform: SocialPlatform }) => {
+  if (platform === "whatsapp") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
+        <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm5.77 14.01c-.24.68-1.41 1.3-1.95 1.38-.5.07-1.14.1-1.84-.12-.43-.14-.98-.32-1.69-.63-2.97-1.28-4.91-4.27-5.06-4.47-.15-.2-1.21-1.61-1.21-3.07 0-1.46.76-2.18 1.03-2.48.27-.3.59-.37.79-.37.2 0 .4 0 .57.01.18.01.43-.07.67.51.24.59.83 2.04.9 2.19.07.15.12.32.02.52-.1.2-.15.32-.3.5-.15.18-.31.4-.44.54-.15.15-.3.31-.13.61.17.3.76 1.25 1.63 2.02 1.12 1 2.06 1.31 2.36 1.46.3.15.47.13.65-.08.18-.2.75-.87.95-1.17.2-.3.4-.25.67-.15.27.1 1.73.82 2.03.97.3.15.5.22.57.34.07.12.07.7-.17 1.38z" />
+      </svg>
+    );
+  }
+  if (platform === "x") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+      </svg>
+    );
+  }
+  if (platform === "linkedin") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
+        <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" />
+    </svg>
+  );
+};
+
+function playCameraShutterSound() {
+  try {
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const bufferSize = ctx.sampleRate * 0.055;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      const env = Math.exp(-i / (ctx.sampleRate * 0.012));
+      data[i] = (Math.random() * 2 - 1) * env * 0.35;
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = 1800;
+
+    noise.connect(filter);
+    filter.connect(ctx.destination);
+    noise.start();
+    setTimeout(() => ctx.close().catch(() => undefined), 200);
+  } catch {
+    // AudioContext unavailable
+  }
+}
+
+async function captureWebGLGalleryShot(
+  webglCanvas: HTMLCanvasElement,
+  positionTitle: string,
+  holder: HallOfFameHolder,
+): Promise<Blob | null> {
+  const width = 1080;
+  const height = 1350;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  ctx.fillStyle = "#04100a";
+  ctx.fillRect(0, 0, width, height);
+
+  const photoH = height - 110;
+  const srcRatio = webglCanvas.width / Math.max(1, webglCanvas.height);
+  const dstRatio = width / photoH;
+  let drawW = width;
+  let drawH = photoH;
+  let ox = 0;
+  let oy = 0;
+
+  if (srcRatio > dstRatio) {
+    drawH = photoH;
+    drawW = photoH * srcRatio;
+    ox = (width - drawW) / 2;
+  } else {
+    drawW = width;
+    drawH = width / srcRatio;
+    oy = (photoH - drawH) / 2;
+  }
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, width, photoH);
+  ctx.clip();
+  ctx.drawImage(webglCanvas, ox, oy, drawW, drawH);
+  ctx.restore();
+
+  // Subtle dark film-strip footer with official Hall of Fame & Built by TMB tag
+  ctx.fillStyle = "#040d08";
+  ctx.fillRect(0, photoH, width, 110);
+  ctx.strokeStyle = "rgba(200, 162, 75, 0.45)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, photoH);
+  ctx.lineTo(width, photoH);
+  ctx.stroke();
+
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#f4f7f5";
+  ctx.font = "700 22px Outfit, Inter, system-ui, sans-serif";
+  ctx.fillText(`${holder.name}  ·  ${positionTitle.toUpperCase()}`, 44, photoH + 38, width - 280);
+
+  ctx.fillStyle = "rgba(217, 190, 117, 0.9)";
+  ctx.font = "600 17px Inter, system-ui, sans-serif";
+  ctx.fillText(`NACOS LASUSTECH EXECUTIVE HALL OF FAME  (${holder.session})`, 44, photoH + 74, width - 280);
+
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#d9be75";
+  ctx.font = "700 17px Inter, system-ui, sans-serif";
+  ctx.fillText("BUILT BY TMB", width - 44, photoH + 56);
+
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), "image/png");
+  });
+}
+
 function buildSocialDrafts(positionTitle: string, holder: HallOfFameHolder, pageUrl: string): Record<SocialPlatform, string> {
   return {
     x: `Honoring ${holder.name} (${positionTitle}, ${holder.session}) in the NACOS LASUSTECH Executive Hall of Fame! 🏆\n\nStep into the 3D gallery: ${pageUrl}\n\n#NACOSLASUSTECH #HallOfFame #BuiltByTMB`,
@@ -356,6 +484,8 @@ const ExecutivesHallOfFame3D = ({ positions }: ExecutivesHallOfFame3DProps) => {
   const [musicMuted, setMusicMuted] = useState(false);
   const [autoTour, setAutoTour] = useState(true);
   const [sharingSnapshot, setSharingSnapshot] = useState(false);
+  const [cameraStage, setCameraStage] = useState<"aiming" | "flash" | null>(null);
+  const rendererCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [snapshotPreview, setSnapshotPreview] = useState<{
     url: string;
     blob: Blob;
@@ -441,7 +571,29 @@ const ExecutivesHallOfFame3D = ({ positions }: ExecutivesHallOfFame3DProps) => {
     if (sharingSnapshot) return;
     setSharingSnapshot(true);
     try {
-      const blob = await renderExecutiveSnapshotPng(positionTitle, holder);
+      let blob: Blob | null = null;
+
+      if (viewMode === "3d" && !webglError && rendererCanvasRef.current) {
+        // Pause tour and frame the person squarely before taking the shot
+        setAutoTour(false);
+        autoTourRef.current = false;
+        walkToRef.current?.(activeStopIndex);
+        setCameraStage("aiming");
+        await new Promise((r) => setTimeout(r, 480));
+
+        setCameraStage("flash");
+        playCameraShutterSound();
+        blob = await captureWebGLGalleryShot(rendererCanvasRef.current, positionTitle, holder);
+        await new Promise((r) => setTimeout(r, 260));
+        setCameraStage(null);
+      } else {
+        setCameraStage("flash");
+        playCameraShutterSound();
+        blob = await renderExecutiveSnapshotPng(positionTitle, holder);
+        await new Promise((r) => setTimeout(r, 220));
+        setCameraStage(null);
+      }
+
       if (!blob) return;
       const slug = holder.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
       const fileName = `${slug}-hall-of-fame.png`;
@@ -452,6 +604,7 @@ const ExecutivesHallOfFame3D = ({ positions }: ExecutivesHallOfFame3DProps) => {
       });
       setCopiedCaption(false);
     } finally {
+      setCameraStage(null);
       setSharingSnapshot(false);
     }
   };
@@ -623,11 +776,16 @@ const ExecutivesHallOfFame3D = ({ positions }: ExecutivesHallOfFame3DProps) => {
 
     let renderer: THREE.WebGLRenderer;
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+      renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        powerPreference: "high-performance",
+        preserveDrawingBuffer: true,
+      });
     } catch {
       setWebglError(true);
       return;
     }
+    rendererCanvasRef.current = renderer.domElement;
 
     const width = container.clientWidth || 800;
     const height = container.clientHeight || 560;
@@ -1214,6 +1372,7 @@ const ExecutivesHallOfFame3D = ({ positions }: ExecutivesHallOfFame3DProps) => {
       geometries.forEach((g) => g.dispose());
       materials.forEach((m) => m.dispose());
       textures.forEach((t) => t.dispose());
+      rendererCanvasRef.current = null;
       renderer.dispose();
     };
   }, [positions, viewMode]);
@@ -1372,6 +1531,29 @@ const ExecutivesHallOfFame3D = ({ positions }: ExecutivesHallOfFame3DProps) => {
             aria-label="First-person 3D Executives Hall of Fame corridor. Click any wall portrait to walk to it, drag to look around, or use WASD keys."
           />
 
+          {/* Camera Viewfinder & Shutter Flash Overlay */}
+          {cameraStage && (
+            <div
+              className={`pointer-events-none absolute inset-0 z-20 transition-opacity duration-200 ${
+                cameraStage === "flash" ? "bg-white opacity-95" : "bg-black/20 opacity-100"
+              }`}
+            >
+              {cameraStage === "aiming" && (
+                <div className="relative h-full w-full p-6">
+                  <div className="absolute left-6 top-6 h-8 w-8 border-l-2 border-t-2 border-amber-300" />
+                  <div className="absolute right-6 top-6 h-8 w-8 border-r-2 border-t-2 border-amber-300" />
+                  <div className="absolute bottom-6 left-6 h-8 w-8 border-b-2 border-l-2 border-amber-300" />
+                  <div className="absolute bottom-6 right-6 h-8 w-8 border-b-2 border-r-2 border-amber-300" />
+                  <div className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-sm border border-amber-300/80" />
+                  <div className="absolute left-8 top-8 flex items-center gap-2 rounded bg-black/65 px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider text-amber-200">
+                    <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+                    Focus Locked
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Bottom HUD */}
           {currentEntry && (
             <div className="flex flex-col gap-3 border-t border-white/10 bg-black/45 px-4 py-3.5 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:px-5 md:px-7">
@@ -1508,11 +1690,16 @@ const ExecutivesHallOfFame3D = ({ positions }: ExecutivesHallOfFame3DProps) => {
 
       {/* Camera Snapshot Preview & Social Share Modal */}
       <Dialog open={!!snapshotPreview} onOpenChange={(open) => !open && closeSnapshotPreview()}>
-        <DialogContent className="max-h-[92vh] overflow-y-auto rounded-3xl border border-amber-400/25 bg-[#06140e] text-white sm:max-w-2xl">
+        <DialogContent className="max-h-[92vh] overflow-y-auto rounded-2xl border border-white/15 bg-[#0b0f0d] text-white sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 font-display text-lg text-white">
-              <Camera className="h-5 w-5 text-amber-300" />
-              Hall of Fame Camera Snapshot
+            <DialogTitle className="flex items-center justify-between gap-2 pr-6 font-display text-base text-white">
+              <span className="flex items-center gap-2">
+                <Camera className="h-4 w-4 text-amber-300" />
+                Camera Shot Review
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-white/50">
+                1080×1350 · PNG
+              </span>
             </DialogTitle>
           </DialogHeader>
 
@@ -1523,22 +1710,26 @@ const ExecutivesHallOfFame3D = ({ positions }: ExecutivesHallOfFame3DProps) => {
                 : "https://nacoslasustech.org/executives?session=2025/2026";
             const drafts = buildSocialDrafts(snapshotPreview.positionTitle, snapshotPreview.holder, pageUrl);
             const activeCaption = drafts[selectedSocial];
-            const socialMeta: { id: SocialPlatform; label: string; badge: string }[] = [
-              { id: "whatsapp", label: "WhatsApp", badge: "WA" },
-              { id: "x", label: "X", badge: "𝕏" },
-              { id: "linkedin", label: "LinkedIn", badge: "in" },
-              { id: "tiktok", label: "TikTok", badge: "TT" },
+            const socialMeta: { id: SocialPlatform; label: string }[] = [
+              { id: "whatsapp", label: "WhatsApp" },
+              { id: "x", label: "X" },
+              { id: "linkedin", label: "LinkedIn" },
+              { id: "tiktok", label: "TikTok" },
             ];
 
             return (
-              <div className="grid gap-5 md:grid-cols-[240px_1fr]">
-                {/* Camera Viewfinder Preview */}
+              <div className="grid gap-5 md:grid-cols-[250px_1fr]">
+                {/* Real Camera Viewfinder Frame */}
                 <div className="space-y-3">
-                  <div className="relative overflow-hidden rounded-2xl border border-amber-400/35 bg-black p-1.5 shadow-lg">
+                  <div className="relative overflow-hidden rounded-lg border border-white/15 bg-black p-2 shadow-2xl">
+                    <div className="pointer-events-none absolute left-3 top-3 h-3 w-3 border-l border-t border-amber-300/70" />
+                    <div className="pointer-events-none absolute right-3 top-3 h-3 w-3 border-r border-t border-amber-300/70" />
+                    <div className="pointer-events-none absolute bottom-3 left-3 h-3 w-3 border-b border-l border-amber-300/70" />
+                    <div className="pointer-events-none absolute bottom-3 right-3 h-3 w-3 border-b border-r border-amber-300/70" />
                     <img
                       src={snapshotPreview.url}
                       alt={`${snapshotPreview.holder.name} snapshot`}
-                      className="w-full rounded-xl object-contain"
+                      className="w-full rounded-sm object-contain"
                     />
                   </div>
                   <div className="flex gap-2">
@@ -1567,8 +1758,8 @@ const ExecutivesHallOfFame3D = ({ positions }: ExecutivesHallOfFame3DProps) => {
                 {/* Social Platform Tabs & Drafted Caption */}
                 <div className="flex flex-col justify-between gap-4">
                   <div className="space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-amber-300">
-                      Share to Socials (Drafted Template)
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-300">
+                      Share to Socials
                     </p>
                     <div className="grid grid-cols-4 gap-1.5">
                       {socialMeta.map((s) => {
@@ -1581,20 +1772,20 @@ const ExecutivesHallOfFame3D = ({ positions }: ExecutivesHallOfFame3DProps) => {
                               setSelectedSocial(s.id);
                               setCopiedCaption(false);
                             }}
-                            className={`flex flex-col items-center justify-center gap-0.5 rounded-xl border py-2 text-[11px] font-semibold transition-colors ${
+                            className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border py-2.5 text-[11px] font-semibold transition-colors ${
                               active
-                                ? "border-amber-400 bg-amber-400/20 text-amber-200"
+                                ? "border-amber-400 bg-amber-400/15 text-amber-200"
                                 : "border-white/10 bg-white/5 text-white/75 hover:bg-white/10 hover:text-white"
                             }`}
                           >
-                            <span className="text-sm font-bold leading-none">{s.badge}</span>
+                            <SocialBrandIcon platform={s.id} />
                             <span>{s.label}</span>
                           </button>
                         );
                       })}
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
+                    <div className="rounded-xl border border-white/10 bg-black/50 p-3">
                       <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-white/85">
                         {activeCaption}
                       </pre>
