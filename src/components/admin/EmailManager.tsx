@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FileText, Loader2, MailCheck, Send } from "lucide-react";
+import { FileText, Loader2, MailCheck, RotateCcw, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -94,8 +94,35 @@ const EmailManager = () => {
   const [countsLoading, setCountsLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [sending, setSending] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ sent: number; failed: number; total: number } | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+
+  const resendFailed = async (campaignId: string) => {
+    setResendingId(campaignId);
+    try {
+      const res: {
+        resent: number;
+        stillFailed: number;
+        rateLimited?: boolean;
+        message?: string;
+      } = await adminFetch(`/admin/email/campaigns/${campaignId}/resend-failed`, { method: "POST" });
+
+      if (res.message && res.resent === 0 && res.stillFailed === 0) {
+        toast({ title: "Nothing to resend", description: res.message });
+      } else {
+        toast({
+          title: res.rateLimited ? "Paused by hourly limit" : "Failed emails retried",
+          description: `${res.resent} resent, ${res.stillFailed} still failed.${res.rateLimited ? " Try again later for the rest." : ""}`,
+        });
+      }
+      history.reload();
+    } catch (err) {
+      toast({ title: "Resend failed", description: errMessage(err), variant: "destructive" });
+    } finally {
+      setResendingId(null);
+    }
+  };
 
   const needsLevel = type === "level" || type === "level_department";
   const needsDept = type === "department" || type === "level_department";
@@ -288,6 +315,7 @@ const EmailManager = () => {
                 <Th>Failed</Th>
                 <Th>Status</Th>
                 <Th>Date</Th>
+                <Th>Actions</Th>
               </tr>
             </thead>
             <tbody>
@@ -301,6 +329,27 @@ const EmailManager = () => {
                   <Td>{c.failed_count}</Td>
                   <Td><Pill tone={c.status === "sent" || c.status === "completed" ? "green" : c.status === "failed" ? "red" : "amber"}>{c.status}</Pill></Td>
                   <Td className="text-xs">{formatDate(c.sent_at || c.created_at)}</Td>
+                  <Td>
+                    {Number(c.failed_count) > 0 ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={resendingId === c.id || sending}
+                        onClick={() => resendFailed(c.id)}
+                        className="h-7 rounded-full px-3 text-xs"
+                      >
+                        {resendingId === c.id ? (
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                        ) : (
+                          <RotateCcw className="mr-1 h-3 w-3" />
+                        )}
+                        {resendingId === c.id ? "Resending..." : "Resend failed"}
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">-</span>
+                    )}
+                  </Td>
                 </tr>
               ))}
             </tbody>

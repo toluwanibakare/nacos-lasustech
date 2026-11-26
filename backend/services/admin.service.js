@@ -354,6 +354,44 @@ export const updateHallOfFameLike = (liked = true) => {
   return store.hallOfFameStats;
 };
 
+export const getCampaignFailures = (campaignId) => {
+  const store = getStore();
+  const map = store.campaignFailures || {};
+  return Array.isArray(map[String(campaignId)]) ? map[String(campaignId)] : [];
+};
+
+export const appendCampaignFailures = (campaignId, items) => {
+  if (!Array.isArray(items) || items.length === 0) return;
+  const store = getStore();
+  const map = store.campaignFailures || {};
+  const key = String(campaignId);
+  const existing = Array.isArray(map[key]) ? map[key] : [];
+  const seen = new Set(existing.map((r) => String(r.email || '').toLowerCase()));
+  const merged = [...existing];
+  for (const item of items) {
+    const email = String(item?.email || '').trim();
+    if (!email || seen.has(email.toLowerCase())) continue;
+    seen.add(email.toLowerCase());
+    merged.push({ email, name: item.name || '' });
+  }
+  map[key] = merged;
+  store.campaignFailures = map;
+  saveStore(store);
+};
+
+export const setCampaignFailures = (campaignId, items) => {
+  const store = getStore();
+  const map = store.campaignFailures || {};
+  const key = String(campaignId);
+  if (!Array.isArray(items) || items.length === 0) {
+    delete map[key];
+  } else {
+    map[key] = items;
+  }
+  store.campaignFailures = map;
+  saveStore(store);
+};
+
 /* ==========================================
    API HELPER & image path normalization
    ========================================== */

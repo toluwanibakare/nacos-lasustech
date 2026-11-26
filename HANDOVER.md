@@ -17,6 +17,7 @@
 ### 3. Home, Executives & Admin Email (`src/pages/Index.tsx`, `src/pages/Executives.tsx`, `src/components/ExecutiveCard.tsx`, `src/components/admin/EmailManager.tsx`)
 - Updated `Executives.tsx` with mobile-friendly `2026/2027 (Current)` and `2025/2026 (Hall of Fame)` session tabs; switching to `2025/2026` displays the 3D Executives Hall of Fame and the `2025/2026` council roster.
 - Added the `2025/2026 Hall of Fame & Appreciation` quick-fill email template in `src/components/admin/EmailManager.tsx` targeting Everyone (`all`).
+- Added failed-recipient tracking and `POST /api/admin/email/campaigns/:id/resend-failed` (`backend/services/campaign.service.js`, `backend/routes/admin.routes.js`, `backend/services/admin.service.js`) with a **Resend failed** button per campaign row in `EmailManager.tsx`.
 - Updated `Index.tsx` Executive Council preview to announce the `2026/2027` council transition, show the promoted `2026/2027` Heads of Class, and link to the `2025/2026` archive and Hall of Fame.
 - Added `vacant` state support to `ExecutiveCard.tsx`.
 

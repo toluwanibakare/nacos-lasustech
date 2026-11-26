@@ -1,5 +1,6 @@
 import emailService, { usesCentralMail } from './email.service.js';
 import { centralGet, centralPost } from './central.service.js';
+import { appendCampaignFailures, getCampaignFailures, setCampaignFailures } from './admin.service.js';
 
 /**
  * Email campaigns
@@ -79,6 +80,7 @@ export const sendCampaignBatch = async (campaignId, { fromRunner = false } = {})
   const parallel = usesCentralMail ? 1 : PARALLEL;
   let sent = 0;
   let failed = 0;
+  const failedRecipients = [];
   let rateLimited = false;
   for (let i = 0; i < recipients.length && !rateLimited; i += parallel) {
     const chunk = recipients.slice(i, i + parallel);
@@ -95,9 +97,14 @@ export const sendCampaignBatch = async (campaignId, { fromRunner = false } = {})
         break;
       } else {
         failed += 1;
+        failedRecipients.push({ email: chunk[index].email, name: chunk[index].name });
         console.error(`Campaign ${campaignId} email to ${chunk[index].email} failed:`, result.reason?.message);
       }
     }
+  }
+
+  if (failedRecipients.length > 0) {
+    appendCampaignFailures(campaignId, failedRecipients);
   }
 
   const done = !rateLimited && recipients.length < BATCH_SIZE;
@@ -107,6 +114,61 @@ export const sendCampaignBatch = async (campaignId, { fromRunner = false } = {})
     await sleep(5000); // so a browser that keeps asking does not spin
   }
   return { done, rateLimited, campaign: updated };
+};
+
+export const resendFailedCampaign = async (campaignId) => {
+  const campaign = await centralGet('email_campaign_get', { id: campaignId });
+  const failedList = getCampaignFailures(campaignId);
+  if (failedList.length === 0) {
+    return {
+      resent: 0,
+      stillFailed: 0,
+      rateLimited: false,
+      campaign,
+      message: 'No stored failed recipients found for this campaign.',
+    };
+  }
+
+  const parallel = usesCentralMail ? 1 : PARALLEL;
+  let resent = 0;
+  const stillFailed = [];
+  let rateLimited = false;
+
+  for (let i = 0; i < failedList.length; i += parallel) {
+    const chunk = failedList.slice(i, i + parallel);
+    if (rateLimited) {
+      stillFailed.push(...chunk);
+      continue;
+    }
+    const results = await Promise.allSettled(
+      chunk.map((r) => emailService.sendCustomEmail(r.email, campaign.subject, renderBody(campaign.body, r.name))),
+    );
+    for (let index = 0; index < results.length; index += 1) {
+      const result = results[index];
+      if (result.status === 'fulfilled') {
+        resent += 1;
+      } else if (result.reason?.code === 'ERATELIMIT') {
+        rateLimited = true;
+        stillFailed.push(...chunk.slice(index));
+        break;
+      } else {
+        stillFailed.push(chunk[index]);
+        console.error(`Campaign ${campaignId} retry to ${chunk[index].email} failed:`, result.reason?.message);
+      }
+    }
+  }
+
+  setCampaignFailures(campaignId, stillFailed);
+  const updated = resent > 0
+    ? await centralPost('email_campaign_progress', { id: campaignId, sent: resent, failed: 0, done: stillFailed.length === 0 })
+    : campaign;
+
+  return {
+    resent,
+    stillFailed: stillFailed.length,
+    rateLimited,
+    campaign: updated,
+  };
 };
 
 export const listCampaigns = () => centralGet('email_campaigns');

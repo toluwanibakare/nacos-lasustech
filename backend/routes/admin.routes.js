@@ -6,7 +6,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import protect, { clearFlagCache } from '../middleware/auth.middleware.js';
 import { centralGet, centralPost, sendCentralError } from '../services/central.service.js';
-import { audienceCounts, createCampaign, listCampaigns, sendCampaignBatch } from '../services/campaign.service.js';
+import { audienceCounts, createCampaign, listCampaigns, resendFailedCampaign, sendCampaignBatch } from '../services/campaign.service.js';
 import isAdmin from '../middleware/admin.middleware.js';
 import emailService from '../services/email.service.js';
 import { decryptText } from '../services/crypto.service.js';
@@ -690,6 +690,10 @@ router.post('/email/campaigns', central(async (req, res) => {
 
 router.post('/email/campaigns/:id/send-batch', central(async (req, res) => {
   res.json(await sendCampaignBatch(req.params.id));
+}));
+
+router.post('/email/campaigns/:id/resend-failed', central(async (req, res) => {
+  res.json(await resendFailedCampaign(req.params.id));
 }));
 
 // ── Who am I (permissions drive which pages the admin screen shows) ──────────
