@@ -75,17 +75,17 @@ const Executives = () => {
       <section className="py-12 md:py-16">
         <div className="container space-y-16">
           {/* Session Category Switcher */}
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-6">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Calendar className="h-4 w-4 text-primary" />
-              <span>Academic Session:</span>
-              <span className="font-semibold text-foreground">
+          <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+              <Calendar className="h-4 w-4 shrink-0 text-primary" />
+              <span className="shrink-0">Session:</span>
+              <span className="truncate font-semibold text-foreground">
                 {activeData.label}
                 {isPastArchive ? " (Hall of Fame)" : ""}
               </span>
             </div>
 
-            <div className="inline-flex flex-wrap gap-2 rounded-full border border-border bg-muted/60 p-1">
+            <div className="grid w-full grid-cols-2 gap-1 rounded-full border border-border bg-muted/60 p-1 sm:inline-flex sm:w-auto">
               {executiveSessions.map((item) => {
                 const isSelected = item.session === activeData.session;
                 return (
@@ -93,7 +93,7 @@ const Executives = () => {
                     key={item.session}
                     type="button"
                     onClick={() => handleSelectSession(item.session)}
-                    className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
+                    className={`whitespace-nowrap rounded-full px-3 py-2 text-center text-[11px] font-semibold transition-all sm:px-4 sm:py-1.5 sm:text-xs ${
                       isSelected
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
@@ -107,108 +107,109 @@ const Executives = () => {
             </div>
           </div>
 
-          {/* When viewing 2025/2026 (past session), show the 3D Executives Hall of Fame first */}
-          {isPastArchive && (
+          {/* When viewing 2025/2026 (past session), show only the 3D Executives Hall of Fame */}
+          {isPastArchive ? (
             <div id="hall-of-fame" className="space-y-8">
               <SectionHeading
                 label="Legacy"
                 title="Executives Hall of Fame"
-                description="Select any executive position at the top to explore everyone who has served in that role across past sessions."
+                description="Walk through the 3D corridor or switch to Grid view to explore everyone who served in the 2025/2026 Executive Council."
               />
               <ExecutivesHallOfFame3D positions={hallOfFameByPosition} />
             </div>
-          )}
-
-          {/* Top Leadership & Core Executives */}
-          {hasCoreCouncil ? (
+          ) : (
             <>
-              <div>
-                <h2 className="mb-8 text-center text-xl font-bold uppercase tracking-tight text-muted-foreground/50">
-                  Top Leadership
-                </h2>
-                <div className="flex justify-center">
-                  <div className="grid w-full max-w-4xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {activeData.topLeaders.map((exec) => (
-                      <ExecutiveCard key={`${activeData.session}-${exec.post}`} {...exec} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h2 className="mb-8 text-center text-xl font-bold uppercase tracking-tight text-muted-foreground/50">
-                  Core Executives
-                </h2>
-                <div className="space-y-6">
-                  {coreRow1.length > 0 && (
+              {hasCoreCouncil ? (
+                <>
+                  <div>
+                    <h2 className="mb-8 text-center text-xl font-bold uppercase tracking-tight text-muted-foreground/50">
+                      Top Leadership
+                    </h2>
                     <div className="flex justify-center">
-                      <div className="grid w-full max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                        {coreRow1.map((exec) => (
+                      <div className="grid w-full max-w-4xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                        {activeData.topLeaders.map((exec) => (
                           <ExecutiveCard key={`${activeData.session}-${exec.post}`} {...exec} />
                         ))}
                       </div>
                     </div>
-                  )}
-                  {coreRow2.length > 0 && (
-                    <div className="grid w-full gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-                      {coreRow2.map((exec) => (
-                        <ExecutiveCard key={`${activeData.session}-${exec.post}`} {...exec} />
-                      ))}
+                  </div>
+
+                  <div>
+                    <h2 className="mb-8 text-center text-xl font-bold uppercase tracking-tight text-muted-foreground/50">
+                      Core Executives
+                    </h2>
+                    <div className="space-y-6">
+                      {coreRow1.length > 0 && (
+                        <div className="flex justify-center">
+                          <div className="grid w-full max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                            {coreRow1.map((exec) => (
+                              <ExecutiveCard key={`${activeData.session}-${exec.post}`} {...exec} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {coreRow2.length > 0 && (
+                        <div className="grid w-full gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+                          {coreRow2.map((exec) => (
+                            <ExecutiveCard key={`${activeData.session}-${exec.post}`} {...exec} />
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-3xl border border-primary/20 bg-card p-8 text-center md:p-12">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                    <Users className="h-5 w-5" />
+                  </div>
+                  <span className="mt-4 inline-block text-[11px] font-semibold uppercase tracking-widest text-primary">
+                    {activeData.session} Executive Council
+                  </span>
+                  <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">
+                    New Executive Council Unveiling Soon
+                  </h2>
+                  <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
+                    The newly elected {activeData.session} executives have been chosen. Official portraits and profiles for the Executive Council will be published here shortly.
+                  </p>
+                  <div className="mt-6 flex flex-wrap justify-center gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={openHallOfFame}
+                      className="rounded-full text-xs font-semibold"
+                    >
+                      View 2025/2026 Hall of Fame
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* HOCs */}
+              <div>
+                <h2 className="mb-8 text-center text-xl font-bold uppercase tracking-tight text-muted-foreground/50">
+                  Heads of Class (HOC)
+                </h2>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                  {activeData.hocs.map((exec) => (
+                    <ExecutiveCard key={`${activeData.session}-${exec.post}`} {...exec} />
+                  ))}
+                </div>
+              </div>
+
+              {/* Asst HOCs */}
+              <div>
+                <h2 className="mb-8 text-center text-xl font-bold uppercase tracking-tight text-muted-foreground/50">
+                  Assistant Heads of Class
+                </h2>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                  {activeData.asstHocs.map((exec) => (
+                    <ExecutiveCard key={`${activeData.session}-${exec.post}`} {...exec} />
+                  ))}
                 </div>
               </div>
             </>
-          ) : (
-            <div className="rounded-3xl border border-primary/20 bg-card p-8 text-center md:p-12">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                <Users className="h-5 w-5" />
-              </div>
-              <span className="mt-4 inline-block text-[11px] font-semibold uppercase tracking-widest text-primary">
-                {activeData.session} Executive Council
-              </span>
-              <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">
-                New Executive Council Unveiling Soon
-              </h2>
-              <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-                The newly elected {activeData.session} executives have been chosen. Official portraits and profiles for the Executive Council will be published here shortly.
-              </p>
-              <div className="mt-6 flex flex-wrap justify-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={openHallOfFame}
-                  className="rounded-full text-xs font-semibold"
-                >
-                  View 2025/2026 Hall of Fame
-                </Button>
-              </div>
-            </div>
           )}
-
-          {/* HOCs */}
-          <div>
-            <h2 className="mb-8 text-center text-xl font-bold uppercase tracking-tight text-muted-foreground/50">
-              Heads of Class (HOC)
-            </h2>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {activeData.hocs.map((exec) => (
-                <ExecutiveCard key={`${activeData.session}-${exec.post}`} {...exec} />
-              ))}
-            </div>
-          </div>
-
-          {/* Asst HOCs */}
-          <div>
-            <h2 className="mb-8 text-center text-xl font-bold uppercase tracking-tight text-muted-foreground/50">
-              Assistant Heads of Class
-            </h2>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {activeData.asstHocs.map((exec) => (
-                <ExecutiveCard key={`${activeData.session}-${exec.post}`} {...exec} />
-              ))}
-            </div>
-          </div>
         </div>
       </section>
     </Layout>

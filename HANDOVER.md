@@ -11,10 +11,12 @@
 
 ### 2. 3D Executives Hall of Fame (`src/components/ExecutivesHallOfFame3D.tsx`)
 - Added a first-person POV walkable Three.js 3D corridor shown when switching to the `2025/2026 (Hall of Fame)` session tab (or `#hall-of-fame`) on `/executives`.
-- Each executive position has its own physical wall bay with the position title mounted above the portraits, framed portraits, and name/session plaques underneath. Visitors can watch the cinematic Auto Tour slide smoothly from one person to another, enter Fullscreen, listen to the looping Hall of Fame instrumental (`src/assets/The_Script_-_Hall_of_Fame_Instrumental_(mp3.pm).mp3`) with Mute/Unmute, click any wall frame to walk to it, drag to look around, use WASD/Arrow keys, or toggle Grid view.
+- Each executive position has its own physical wall bay with the position title mounted above the portraits, framed portraits, and name/session plaques underneath. Visitors can watch the cinematic Auto Tour slide smoothly from one person to another, enter Fullscreen, listen to the looping Hall of Fame instrumental (`src/assets/The_Script_-_Hall_of_Fame_Instrumental_(mp3.pm).mp3`) with Mute/Unmute, click any wall frame to walk to it, drag to look around, use WASD/Arrow keys, toggle Grid view, and view/toggle **Views & Likes** counters.
+- Added `/api/content/hall-of-fame/stats`, `/api/content/hall-of-fame/view`, and `/api/content/hall-of-fame/like` in `backend/routes/content.routes.js` & `backend/services/admin.service.js` (with `localStorage` fallback).
 
-### 3. Home & Executives Pages (`src/pages/Index.tsx`, `src/pages/Executives.tsx`, `src/components/ExecutiveCard.tsx`)
-- Updated `Executives.tsx` with `2026/2027 (Current)` and `2025/2026 (Hall of Fame)` session tabs; switching to `2025/2026` displays the 3D Executives Hall of Fame and the `2025/2026` council roster.
+### 3. Home, Executives & Admin Email (`src/pages/Index.tsx`, `src/pages/Executives.tsx`, `src/components/ExecutiveCard.tsx`, `src/components/admin/EmailManager.tsx`)
+- Updated `Executives.tsx` with mobile-friendly `2026/2027 (Current)` and `2025/2026 (Hall of Fame)` session tabs; switching to `2025/2026` displays the 3D Executives Hall of Fame and the `2025/2026` council roster.
+- Added the `2025/2026 Hall of Fame & Appreciation` quick-fill email template in `src/components/admin/EmailManager.tsx` targeting Everyone (`all`).
 - Updated `Index.tsx` Executive Council preview to announce the `2026/2027` council transition, show the promoted `2026/2027` Heads of Class, and link to the `2025/2026` archive and Hall of Fame.
 - Added `vacant` state support to `ExecutiveCard.tsx`.
 

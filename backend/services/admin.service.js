@@ -320,6 +320,40 @@ const saveStore = (data) => {
   }
 };
 
+export const getHallOfFameStats = () => {
+  const store = getStore();
+  const stats = store.hallOfFameStats || { views: 0, likes: 0 };
+  return {
+    views: Number(stats.views || 0),
+    likes: Number(stats.likes || 0),
+  };
+};
+
+export const incrementHallOfFameView = () => {
+  const store = getStore();
+  const current = store.hallOfFameStats || { views: 0, likes: 0 };
+  store.hallOfFameStats = {
+    views: Number(current.views || 0) + 1,
+    likes: Number(current.likes || 0),
+  };
+  saveStore(store);
+  return store.hallOfFameStats;
+};
+
+export const updateHallOfFameLike = (liked = true) => {
+  const store = getStore();
+  const current = store.hallOfFameStats || { views: 0, likes: 0 };
+  const nextLikes = liked
+    ? Number(current.likes || 0) + 1
+    : Math.max(0, Number(current.likes || 0) - 1);
+  store.hallOfFameStats = {
+    views: Number(current.views || 0),
+    likes: nextLikes,
+  };
+  saveStore(store);
+  return store.hallOfFameStats;
+};
+
 /* ==========================================
    API HELPER & image path normalization
    ========================================== */

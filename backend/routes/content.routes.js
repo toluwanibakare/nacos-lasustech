@@ -1,6 +1,13 @@
 import { Router } from 'express';
 import axios from 'axios';
-import { listBlogs, listEvents, listExecutives } from '../services/admin.service.js';
+import {
+  getHallOfFameStats,
+  incrementHallOfFameView,
+  listBlogs,
+  listEvents,
+  listExecutives,
+  updateHallOfFameLike,
+} from '../services/admin.service.js';
 import { centralGet } from '../services/central.service.js';
 
 const router = Router();
@@ -112,6 +119,34 @@ router.get('/blogs', async (_req, res) => {
   } catch (error) {
     console.error('Blogs fetch error:', error.message);
     res.json([]);
+  }
+});
+
+router.get('/hall-of-fame/stats', (_req, res) => {
+  try {
+    res.json(getHallOfFameStats());
+  } catch (error) {
+    console.error('Hall of fame stats error:', error.message);
+    res.json({ views: 0, likes: 0 });
+  }
+});
+
+router.post('/hall-of-fame/view', (_req, res) => {
+  try {
+    res.json(incrementHallOfFameView());
+  } catch (error) {
+    console.error('Hall of fame view error:', error.message);
+    res.status(500).json({ message: 'Could not record view.' });
+  }
+});
+
+router.post('/hall-of-fame/like', (req, res) => {
+  try {
+    const liked = req.body?.liked !== false;
+    res.json(updateHallOfFameLike(liked));
+  } catch (error) {
+    console.error('Hall of fame like error:', error.message);
+    res.status(500).json({ message: 'Could not update like.' });
   }
 });
 

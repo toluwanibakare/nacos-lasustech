@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, MailCheck, Send } from "lucide-react";
+import { FileText, Loader2, MailCheck, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +18,26 @@ const AUDIENCES: { value: AudienceType; label: string }[] = [
   { value: "level", label: "By level" },
   { value: "department", label: "By department" },
   { value: "level_department", label: "Level + department" },
+];
+
+const EMAIL_TEMPLATES = [
+  {
+    id: "hall-of-fame-appreciation",
+    label: "2025/2026 Hall of Fame & Appreciation",
+    subject: "Thank You, 2025/2026 Executives: Step Into the New 3D Hall of Fame",
+    audience: "all" as AudienceType,
+    buildBody: (origin: string) => {
+      const hallUrl = `${origin}/executives?session=2025/2026`;
+      return `<p>Hello {{name}},</p>
+<p>As we usher in our newly elected <strong>2026/2027 Executive Council</strong>, we want to take a moment to sincerely appreciate the outgoing <strong>2025/2026 NACOS LASUSTECH Executive Council</strong> for their dedication, leadership, and selfless service to our chapter.</p>
+<p>From organizing impactful academic programs, bootcamps, and events to representing computing students with excellence, their hard work has left a lasting mark on NACOS LASUSTECH.</p>
+<p>To honor their legacy, we have launched a brand-new <strong>Interactive 3D Executives Hall of Fame</strong> on our website. You can walk through the gallery, view every past executive's portrait and tenure, and leave a like to show your appreciation.</p>
+<p><a href="${hallUrl}" style="display:inline-block;padding:12px 22px;background:#16a34a;color:#ffffff;text-decoration:none;border-radius:999px;font-weight:600;">Visit the 3D Hall of Fame</a></p>
+<p>Or copy this link into your browser: <a href="${hallUrl}">${hallUrl}</a></p>
+<p>Thank you once again to our 2025/2026 executives, and congratulations to our incoming 2026/2027 leaders.</p>
+<p>Warm regards,<br/><strong>NACOS LASUSTECH Chapter</strong></p>`;
+    },
+  },
 ];
 
 const audienceText = (type: string, level?: string | null, dept?: string | null) => {
@@ -164,6 +184,35 @@ const EmailManager = () => {
       )}
       <Card title="Compose">
         <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-[#f7fbf6] p-3">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+              <FileText className="h-3.5 w-3.5 text-primary" />
+              Templates:
+            </span>
+            {EMAIL_TEMPLATES.map((tpl) => (
+              <Button
+                key={tpl.id}
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={sending}
+                className="h-8 rounded-full bg-white text-xs font-semibold"
+                onClick={() => {
+                  const origin = typeof window !== "undefined" ? window.location.origin : "https://nacoslasustech.org";
+                  setSubject(tpl.subject);
+                  setBody(tpl.buildBody(origin));
+                  setType(tpl.audience);
+                  toast({
+                    title: "Template loaded",
+                    description: `"${tpl.label}" is ready. Review and click Send when ready.`,
+                  });
+                }}
+              >
+                {tpl.label}
+              </Button>
+            ))}
+          </div>
+
           <Field label="Subject">
             <Input className="rounded-full" value={subject} onChange={(e) => setSubject(e.target.value)} disabled={sending} />
           </Field>
